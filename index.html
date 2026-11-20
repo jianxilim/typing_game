@@ -25,16 +25,17 @@
   .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
     background:radial-gradient(ellipse at center,rgba(40,20,90,.75),rgba(5,3,15,.92));z-index:10}
   .overlay.hidden{display:none}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:34px 40px;max-width:640px;width:92%;
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:34px 40px;max-width:760px;width:94%;
     text-align:center;box-shadow:0 0 60px rgba(255,79,216,.18),0 0 120px rgba(63,242,255,.08)}
   h1{margin:0 0 4px;font-size:44px;line-height:1.1;
     background:linear-gradient(90deg,var(--pink),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
   .sub{color:var(--dim);margin-bottom:24px}
-  .modes{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+  .modes{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:18px 0}
   .mode{cursor:pointer;border:2px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);border-radius:14px;
     padding:16px 6px;font-size:15px;font-weight:700;transition:.15s;font-family:inherit}
   .mode .big{display:block;font-size:30px;margin-bottom:6px}
   .mode small{display:block;color:var(--dim);font-weight:500;font-size:11px;margin-top:4px}
+  .mode.bleach .big{color:#ff8a3d;text-shadow:0 0 12px #ff8a3d}
   .mode:hover,.mode.sel{border-color:var(--cyan);box-shadow:0 0 18px rgba(63,242,255,.35);transform:translateY(-2px)}
   .btn{cursor:pointer;border:none;border-radius:999px;padding:13px 38px;font-size:17px;font-weight:800;font-family:inherit;
     background:linear-gradient(90deg,var(--pink),#9b5cff);color:white;box-shadow:0 0 24px rgba(255,79,216,.45);margin:6px}
@@ -54,7 +55,7 @@
   .row label{cursor:pointer}
   #imeWarn{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--red);color:white;padding:8px 16px;
     border-radius:10px;font-weight:700;display:none;z-index:5}
-  @media (max-width:640px){.modes{grid-template-columns:repeat(2,1fr)} h1{font-size:32px} .hud .box{min-width:80px;padding:6px 10px}.hud .val{font-size:16px}}
+  @media (max-width:700px){.modes{grid-template-columns:repeat(3,1fr)} h1{font-size:32px} .hud .box{min-width:80px;padding:6px 10px}.hud .val{font-size:16px}}
 </style>
 </head>
 <body>
@@ -81,6 +82,7 @@
       <button class="mode sel" data-mode="ja"><span class="big">あ</span>日本語<small>罗马字输入</small></button>
       <button class="mode" data-mode="zh"><span class="big">中</span>中文<small>拼音输入</small></button>
       <button class="mode" data-mode="en"><span class="big">A</span>English<small>直接输入</small></button>
+      <button class="mode bleach" data-mode="bleach"><span class="big">卍</span>BLEACH篇<small>死神 · 罗马字</small></button>
       <button class="mode" data-mode="mix"><span class="big">✦</span>混合<small>三语随机</small></button>
     </div>
     <div class="row">
@@ -137,41 +139,106 @@
 const JA = {
   t1: [["猫","ねこ"],["犬","いぬ"],["空","そら"],["海","うみ"],["山","やま"],["花","はな"],["水","みず"],["星","ほし"],
        ["月","つき"],["風","かぜ"],["雨","あめ"],["雪","ゆき"],["鳥","とり"],["魚","さかな"],["雲","くも"],["森","もり"],
-       ["光","ひかり"],["虹","にじ"],["川","かわ"],["石","いし"],["夢","ゆめ"],["火","ひ"],["竜","りゅう"],["忍者","にんじゃ"]],
+       ["光","ひかり"],["虹","にじ"],["川","かわ"],["石","いし"],["夢","ゆめ"],["火","ひ"],["竜","りゅう"],["忍者","にんじゃ"],
+       ["本","ほん"],["手","て"],["目","め"],["口","くち"],["耳","みみ"],["足","あし"],["木","き"],["朝","あさ"],["夜","よる"],
+       ["春","はる"],["夏","なつ"],["秋","あき"],["冬","ふゆ"],["色","いろ"],["声","こえ"],["剣","けん"],["盾","たて"],["鬼","おに"],
+       ["狐","きつね"],["熊","くま"],["象","ぞう"],["兎","うさぎ"],["亀","かめ"],["卵","たまご"],["米","こめ"],["肉","にく"],
+       ["心","こころ"],["道","みち"],["町","まち"],["駅","えき"],["家","いえ"],["車","くるま"],["城","しろ"],["寿司","すし"],["パン","ぱん"]],
   t2: [["桜","さくら"],["友達","ともだち"],["学校","がっこう"],["電車","でんしゃ"],["切符","きっぷ"],["新聞","しんぶん"],
        ["本屋","ほんや"],["りんご","りんご"],["お茶","おちゃ"],["牛乳","ぎゅうにゅう"],["自転車","じてんしゃ"],["先生","せんせい"],
        ["手紙","てがみ"],["写真","しゃしん"],["音楽","おんがく"],["映画","えいが"],["地球","ちきゅう"],["宇宙","うちゅう"],
-       ["動物","どうぶつ"],["教室","きょうしつ"],["ラーメン","らーめん"],["ゲーム","げーむ"],["勇者","ゆうしゃ"],["魔法","まほう"]],
+       ["動物","どうぶつ"],["教室","きょうしつ"],["ラーメン","らーめん"],["ゲーム","げーむ"],["勇者","ゆうしゃ"],["魔法","まほう"],
+       ["学生","がくせい"],["会社","かいしゃ"],["時計","とけい"],["天気","てんき"],["料理","りょうり"],["野菜","やさい"],["果物","くだもの"],
+       ["天ぷら","てんぷら"],["漢字","かんじ"],["宿題","しゅくだい"],["旅行","りょこう"],["散歩","さんぽ"],["花火","はなび"],["神社","じんじゃ"],
+       ["侍","さむらい"],["冒険","ぼうけん"],["太陽","たいよう"],["季節","きせつ"],["家族","かぞく"],["野球","やきゅう"],["弁当","べんとう"],
+       ["着物","きもの"],["東京","とうきょう"],["大阪","おおさか"],["京都","きょうと"],["沖縄","おきなわ"],["カメラ","かめら"],
+       ["テレビ","てれび"],["ピアノ","ぴあの"],["アニメ","あにめ"],["マンガ","まんが"]],
   t3: [["ありがとうございます","ありがとうございます"],["こんにちは","こんにちは"],["おはようございます","おはようございます"],
        ["いただきます","いただきます"],["宜しくお願いします","よろしくおねがいします"],["新幹線","しんかんせん"],
        ["コンピューター","こんぴゅーたー"],["チョコレート","ちょこれーと"],["遊園地","ゆうえんち"],["図書館","としょかん"],
        ["病院","びょういん"],["携帯電話","けいたいでんわ"],["飛行機","ひこうき"],["授業","じゅぎょう"],["誕生日","たんじょうび"],
-       ["富士山","ふじさん"],["お祭り","おまつり"],["キーボード","きーぼーど"],["冒険の始まり","ぼうけんのはじまり"]],
+       ["富士山","ふじさん"],["お祭り","おまつり"],["キーボード","きーぼーど"],["冒険の始まり","ぼうけんのはじまり"],
+       ["いってきます","いってきます"],["おやすみなさい","おやすみなさい"],["ごちそうさまでした","ごちそうさまでした"],
+       ["北海道","ほっかいどう"],["秋葉原","あきはばら"],["東京タワー","とうきょうたわー"],["日本料理","にほんりょうり"],
+       ["自動販売機","じどうはんばいき"],["一期一会","いちごいちえ"],["天気予報","てんきよほう"],["夏休み","なつやすみ"],
+       ["卒業式","そつぎょうしき"],["冷蔵庫","れいぞうこ"],["美術館","びじゅつかん"],["水族館","すいぞくかん"],["動物園","どうぶつえん"],
+       ["アイスクリーム","あいすくりーむ"],["インターネット","いんたーねっと"],["ハンバーガー","はんばーがー"]],
   boss:[["生麦生米生卵","なまむぎなまごめなまたまご"],["赤巻紙青巻紙黄巻紙","あかまきがみあおまきがみきまきがみ"],
        ["隣の客はよく柿食う客だ","となりのきゃくはよくかきくうきゃくだ"],["日本語のタイピングは楽しい","にほんごのたいぴんぐはたのしい"],
-       ["魔王を倒して世界を救え","まおうをたおしてせかいをすくえ"]]
+       ["魔王を倒して世界を救え","まおうをたおしてせかいをすくえ"],["東京特許許可局","とうきょうとっきょきょかきょく"],
+       ["坊主が屏風に上手に坊主の絵を描いた","ぼうずがびょうぶにじょうずにぼうずのえをかいた"],["継続は力なり","けいぞくはちからなり"],
+       ["猿も木から落ちる","さるもきからおちる"],["七転び八起き","ななころびやおき"]]
+};
+// BLEACH篇（日语）：[显示, 读音]
+const BL = {
+  t1: [["死神","しにがみ"],["虚","ほろう"],["卍解","ばんかい"],["始解","しかい"],["鬼道","きどう"],["霊圧","れいあつ"],["瞬歩","しゅんぽ"],
+       ["破面","あらんかる"],["隊長","たいちょう"],["斬月","ざんげつ"],["虚閃","せろ"],["響転","そにーど"],["縛道","ばくどう"],["破道","はどう"],
+       ["義骸","ぎがい"],["魂魄","こんぱく"],["霊子","れいし"],["崩玉","ほうぎょく"],["十刃","えすぱーだ"],["白雷","びゃくらい"],
+       ["紅姫","べにひめ"],["黒棺","くろひつぎ"],["一護","いちご"],["ルキア","るきあ"],["恋次","れんじ"],["織姫","おりひめ"],["雨竜","うりゅう"],
+       ["白哉","びゃくや"],["剣八","けんぱち"],["夜一","よるいち"],["藍染","あいぜん"],["一角","いっかく"],["乱菊","らんぎく"],["コン","こん"]],
+  t2: [["斬魄刀","ざんぱくとう"],["副隊長","ふくたいちょう"],["冬獅郎","とうしろう"],["浦原喜助","うらはらきすけ"],["市丸ギン","いちまるぎん"],
+       ["東仙要","とうせんかなめ"],["ウルキオラ","うるきおら"],["グリムジョー","ぐりむじょー"],["尸魂界","そうるそさえてぃ"],["虚圏","うぇこむんど"],
+       ["瀞霊廷","せいれいてい"],["空座町","からくらちょう"],["流魂街","るこんがい"],["滅却師","くいんしー"],["帰刃","れすれくしおん"],
+       ["京楽春水","きょうらくしゅんすい"],["浮竹十四郎","うきたけじゅうしろう"],["砕蜂","そいふぉん"],["涅マユリ","くろつちまゆり"],
+       ["日番谷","ひつがや"],["弓親","ゆみちか"],["雛森桃","ひなもりもも"],["黒腔","がるがんた"],["氷輪丸","ひょうりんまる"],
+       ["蛇尾丸","ざびまる"],["千本桜","せんぼんざくら"],["袖白雪","そでのしらゆき"],["赤火砲","しゃっかほう"],["蒼火墜","そうかつい"],
+       ["雷吼炮","らいこうほう"],["死神代行","しにがみだいこう"],["真央霊術院","しんおうれいじゅついん"],["ヤミー","やみー"],["スターク","すたーく"]],
+  t3: [["黒崎一護","くろさきいちご"],["朽木ルキア","くちきるきあ"],["朽木白哉","くちきびゃくや"],["阿散井恋次","あばらいれんじ"],
+       ["井上織姫","いのうえおりひめ"],["石田雨竜","いしだうりゅう"],["茶渡泰虎","さどやすとら"],["日番谷冬獅郎","ひつがやとうしろう"],
+       ["更木剣八","ざらきけんぱち"],["四楓院夜一","しほういんよるいち"],["藍染惣右介","あいぜんそうすけ"],["山本元柳斎重國","やまもとげんりゅうさいしげくに"],
+       ["護廷十三隊","ごていじゅうさんたい"],["鏡花水月","きょうかすいげつ"],["流刃若火","りゅうじんじゃっか"],["月牙天衝","げつがてんしょう"],
+       ["天鎖斬月","てんさざんげつ"],["双蓮蒼火墜","そうれんそうかつい"],["六杖光牢","りくじょうこうろう"],["花天狂骨","かてんきょうこつ"],
+       ["双魚理","そうぎょのことわり"],["神殺鎗","かみしにのやり"],["黒崎一心","くろさきいっしん"],["志波海燕","しばかいえん"],
+       ["ウルキオラ・シファー","うるきおらしふぁー"],["グリムジョー・ジャガージャック","ぐりむじょーじゃがーじゃっく"]],
+  boss:[["千本桜景厳","せんぼんざくらかげよし"],["大紅蓮氷輪丸","だいぐれんひょうりんまる"],["狒狒王蛇尾丸","ひひおうざびまる"],
+       ["残火の太刀","ざんかのたち"],["最後の月牙天衝","さいごのげつがてんしょう"],["黒崎一護は死神代行","くろさきいちごはしにがみだいこう"],
+       ["護廷十三隊隊長","ごていじゅうさんたいたいちょう"],["卍解・天鎖斬月","ばんかいてんさざんげつ"],["卍解・千本桜景厳","ばんかいせんぼんざくらかげよし"],
+       ["縛道の六十一・六杖光牢","ばくどうのろくじゅういちりくじょうこうろう"],["破道の九十・黒棺","はどうのきゅうじゅうくろひつぎ"]]
 };
 // 中文：[汉字, 拼音]
 const ZH = {
   t1: [["猫","mao"],["狗","gou"],["山","shan"],["水","shui"],["火","huo"],["花","hua"],["天","tian"],["月","yue"],["风","feng"],
        ["雨","yu"],["鱼","yu"],["鸟","niao"],["云","yun"],["星","xing"],["树","shu"],["书","shu"],["你好","nihao"],["中国","zhongguo"],
-       ["学生","xuesheng"],["朋友","pengyou"],["龙","long"],["剑","jian"]],
+       ["学生","xuesheng"],["朋友","pengyou"],["龙","long"],["剑","jian"],["人","ren"],["口","kou"],["手","shou"],["心","xin"],["爱","ai"],
+       ["家","jia"],["门","men"],["车","che"],["马","ma"],["牛","niu"],["羊","yang"],["虎","hu"],["兔","tu"],["米","mi"],["茶","cha"],
+       ["金","jin"],["光","guang"],["梦","meng"],["歌","ge"],["笑","xiao"],["跑","pao"],["飞","fei"],["雪","xue"],["海","hai"],["江","jiang"],
+       ["春天","chuntian"],["夏天","xiatian"],["秋天","qiutian"],["冬天","dongtian"],["北京","beijing"],["上海","shanghai"],
+       ["谢谢","xiexie"],["再见","zaijian"],["加油","jiayou"]],
   t2: [["老师","laoshi"],["电脑","diannao"],["手机","shouji"],["飞机","feiji"],["熊猫","xiongmao"],["苹果","pingguo"],["咖啡","kafei"],
        ["音乐","yinyue"],["电影","dianying"],["学校","xuexiao"],["图书馆","tushuguan"],["火车站","huochezhan"],["太阳","taiyang"],
        ["月亮","yueliang"],["彩虹","caihong"],["宇宙","yuzhou"],["恐龙","konglong"],["绿色","lvse"],["旅行","lvxing"],["勇士","yongshi"],
-       ["魔法","mofa"],["怪兽","guaishou"]],
+       ["魔法","mofa"],["怪兽","guaishou"],["早上好","zaoshanghao"],["冰淇淋","bingqilin"],["巧克力","qiaokeli"],["自行车","zixingche"],
+       ["足球","zuqiu"],["篮球","lanqiu"],["游戏","youxi"],["键盘","jianpan"],["鼠标","shubiao"],["网络","wangluo"],["地球","diqiu"],
+       ["火箭","huojian"],["机器人","jiqiren"],["长城","changcheng"],["故宫","gugong"],["饺子","jiaozi"],["火锅","huoguo"],["包子","baozi"],
+       ["面条","miantiao"],["女孩","nvhai"],["未来","weilai"],["梦想","mengxiang"],["魔法师","mofashi"],["宝藏","baozang"],
+       ["闪电","shandian"],["森林","senlin"],["沙漠","shamo"],["海洋","haiyang"]],
   t3: [["一帆风顺","yifanfengshun"],["马到成功","madaochenggong"],["自强不息","ziqiangbuxi"],["画龙点睛","hualongdianjing"],
        ["守株待兔","shouzhudaitu"],["井底之蛙","jingdizhiwa"],["对牛弹琴","duiniutanqin"],["万事如意","wanshiruyi"],
        ["生日快乐","shengrikuaile"],["新年快乐","xinniankuaile"],["人工智能","rengongzhineng"],["程序设计","chengxusheji"],
-       ["互联网","hulianwang"],["计算机","jisuanji"],["勇往直前","yongwangzhiqian"]],
+       ["互联网","hulianwang"],["计算机","jisuanji"],["勇往直前","yongwangzhiqian"],["一石二鸟","yishierniao"],["三心二意","sanxineryi"],
+       ["半途而废","bantuerfei"],["熟能生巧","shunengshengqiao"],["卧虎藏龙","wohucanglong"],["龙飞凤舞","longfeifengwu"],
+       ["心想事成","xinxiangshicheng"],["身体健康","shentijiankang"],["恭喜发财","gongxifacai"],["百发百中","baifabaizhong"],
+       ["九牛一毛","jiuniuyimao"],["亡羊补牢","wangyangbulao"],["刻舟求剑","kezhouqiujian"],["胸有成竹","xiongyouchengzhu"],
+       ["青出于蓝","qingchuyulan"],["电子游戏","dianziyouxi"],["宇宙飞船","yuzhoufeichuan"],["马来西亚","malaixiya"],["吉隆坡","jilongpo"]],
   boss:[["吃葡萄不吐葡萄皮","chiputaobutuputaopi"],["四是四十是十","sishisishishishi"],["千里之行始于足下","qianlizhixingshiyuzuxia"],
-       ["学而不思则罔","xueerbusizewang"],["欲穷千里目更上一层楼","yuqiongqianlimugengshangyicenglou"]]
+       ["学而不思则罔","xueerbusizewang"],["欲穷千里目更上一层楼","yuqiongqianlimugengshangyicenglou"],
+       ["红鲤鱼与绿鲤鱼与驴","hongliyuyulvliyuyulv"],["黑化肥发灰会挥发","heihuafeifahuihuihuifa"],
+       ["床前明月光疑是地上霜","chuangqianmingyueguangyishidishangshuang"],["天行健君子以自强不息","tianxingjianjunziyiziqiangbuxi"],
+       ["少壮不努力老大徒伤悲","shaozhuangbunulilaodatushangbei"]]
 };
 const EN = {
-  t1: ["cat","dog","sun","moon","star","fire","tree","fish","bird","rain","wind","snow","frog","king","ship","gold","ruby","wolf","bear","lion","bat","orb"],
-  t2: ["dragon","wizard","castle","planet","rocket","shadow","knight","silver","thunder","crystal","monster","galaxy","forest","dungeon","phoenix","keyboard","goblin","potion"],
-  t3: ["adventure","lightning","butterfly","invisible","labyrinth","champion","mysterious","extraordinary","javascript","electricity","necromancer","spellbook"],
-  boss:["the quick brown fox","practice makes perfect","never give up","slay the dragon king","type faster than light"]
+  t1: ["cat","dog","sun","moon","star","fire","tree","fish","bird","rain","wind","snow","frog","king","ship","gold","ruby","wolf","bear","lion","bat","orb",
+       "axe","bow","gem","map","key","cup","hat","sky","ice","owl","ant","egg","ink","jam","box","zip","hero","magic","sword","ghost","flame",
+       "storm","stone","cloud","light","night","blade","crown","quest","power","tiger","shark","snake","ninja"],
+  t2: ["dragon","wizard","castle","planet","rocket","shadow","knight","silver","thunder","crystal","monster","galaxy","forest","dungeon","phoenix","keyboard","goblin","potion",
+       "warrior","sorcerer","vampire","skeleton","treasure","kingdom","volcano","comet","meteor","unicorn","pirate","samurai","cyborg","laser",
+       "portal","shield","hammer","arrow","mermaid","tornado","blizzard","compass","lantern","emerald","sapphire"],
+  t3: ["adventure","lightning","butterfly","invisible","labyrinth","champion","mysterious","extraordinary","javascript","electricity","necromancer","spellbook",
+       "constellation","thunderstorm","invincible","legendary","archaeology","imagination","programming","playground","dinosaur","encyclopedia",
+       "hippopotamus","kaleidoscope","magnificent","revolution","spectacular","transformation","underground","watermelon","basketball","strawberry"],
+  boss:["the quick brown fox","practice makes perfect","never give up","slay the dragon king","type faster than light",
+        "knowledge is power","time flies like an arrow","keep calm and type on","every monster has a weakness",
+        "she sells seashells by the seashore","peter piper picked a peck of pickled peppers"]
 };
 
 /* ===================== 罗马字引擎 ===================== */
@@ -354,7 +421,7 @@ let G = null, mode = "ja", running = false, paused = false, last = 0;
 const BEST_KEY = "typingMonstersBest";
 function loadBest() { try { return JSON.parse(localStorage.getItem(BEST_KEY)) || {}; } catch (e) { return {}; } }
 function saveBest(b) { try { localStorage.setItem(BEST_KEY, JSON.stringify(b)); } catch (e) {} }
-const MODE_NAME = { ja: "日本語", zh: "中文", en: "English", mix: "混合" };
+const MODE_NAME = { ja: "日本語", zh: "中文", en: "English", bleach: "BLEACH篇", mix: "混合" };
 
 function newGame() {
   G = { enemies: [], parts: [], pops: [], beams: [], score: 0, combo: 0, maxCombo: 0, hp: 5, maxHp: 5,
@@ -364,9 +431,10 @@ function newGame() {
 
 function makeWord(tier, lang) {
   const L = lang === "mix" ? pick(["ja", "zh", "en"]) : lang;
+  const JD = L === "bleach" ? BL : JA;
   let item, tries = 0;
   do {
-    if (L === "ja") { const [d, r] = pick(JA[tier]); item = { lang: L, display: d, sub: d === r ? "" : r, units: kanaUnits(r), key: d }; }
+    if (L === "ja" || L === "bleach") { const [d, r] = pick(JD[tier]); item = { lang: "ja", display: d, sub: toHira(d) === r ? "" : r, units: kanaUnits(r), key: d }; }
     else if (L === "zh") { const [d, p] = pick(ZH[tier]); item = { lang: L, display: d, sub: "", units: letterUnits(p), key: d }; }
     else { const w = pick(EN[tier]); item = { lang: L, display: w, sub: "", units: letterUnits(w), key: w }; }
   } while ((G.recent.includes(item.key) || G.enemies.some(e => e.word.key === item.key)) && ++tries < 20);
@@ -397,7 +465,7 @@ function spawn(boss = false) {
   do { x = rand(90, W - 90); ok = G.enemies.every(e => Math.abs(e.x - x) > 150 || e.y > 220); } while (!ok && ++tries < 15);
   G.enemies.push({ x, y: -r, y0: -r, r, word, st: { ui: 0, buf: "", typed: "" }, life, t: 0, boss,
     look: makeLook(boss), locked: false, hitFlash: 0, dead: false });
-  if (boss) { G.bossAlive = true; G.banner = { text: "⚠ BOSS ⚠", t: 2.2, color: "#ff4d6a" }; beep(110, .5, "sawtooth", .08, -60); }
+  if (boss) { G.bossAlive = true; G.banner = { text: mode === "bleach" ? "卍解 BANKAI!" : "⚠ BOSS ⚠", t: 2.2, color: "#ff4d6a" }; beep(110, .5, "sawtooth", .08, -60); }
 }
 
 const playerY = () => H - 70;
@@ -615,7 +683,7 @@ function gameOver() {
 }
 function showBest() {
   const b = loadBest();
-  $("bestLine").textContent = "最高分 · " + ["ja", "zh", "en", "mix"].map(m => `${MODE_NAME[m]} ${(b[m] || 0).toLocaleString()}`).join("  |  ");
+  $("bestLine").textContent = "最高分 · " + ["ja", "zh", "en", "bleach", "mix"].map(m => `${MODE_NAME[m]} ${(b[m] || 0).toLocaleString()}`).join("  |  ");
 }
 function toMenu() { running = false; paused = false; G = null; $("hud").style.display = "none";
   ["overScr", "pauseScr"].forEach(id => $(id).classList.add("hidden")); $("startScr").classList.remove("hidden"); showBest(); }
