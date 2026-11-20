@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>打字怪兽 · Typing Monsters</title>
+<style>
+  :root{
+    --bg:#0b0820; --panel:rgba(20,14,48,.88); --line:#3a2d7a;
+    --pink:#ff4fd8; --cyan:#3ff2ff; --yellow:#ffe14d; --green:#5dff9b; --red:#ff4d6a;
+    --text:#ecebff; --dim:#8f88c9;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:"Segoe UI","PingFang SC","Hiragino Sans","Noto Sans JP","Noto Sans SC","Microsoft YaHei",sans-serif;overflow:hidden}
+  canvas{display:block;width:100vw;height:100vh}
+  .hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;
+    padding:14px 20px;pointer-events:none;font-weight:700;letter-spacing:.5px}
+  .hud .box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 14px;min-width:120px}
+  .hud .lbl{font-size:11px;color:var(--dim);font-weight:600;text-transform:uppercase}
+  .hud .val{font-size:22px}
+  #score{color:var(--yellow)} #combo{color:var(--pink)} #level{color:var(--cyan)}
+  #hearts{font-size:20px;letter-spacing:2px}
+  .hud .mid{display:flex;gap:10px}
+  .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(ellipse at center,rgba(40,20,90,.75),rgba(5,3,15,.92));z-index:10}
+  .overlay.hidden{display:none}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:34px 40px;max-width:640px;width:92%;
+    text-align:center;box-shadow:0 0 60px rgba(255,79,216,.18),0 0 120px rgba(63,242,255,.08)}
+  h1{margin:0 0 4px;font-size:44px;line-height:1.1;
+    background:linear-gradient(90deg,var(--pink),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:var(--dim);margin-bottom:24px}
+  .modes{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+  .mode{cursor:pointer;border:2px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);border-radius:14px;
+    padding:16px 6px;font-size:15px;font-weight:700;transition:.15s;font-family:inherit}
+  .mode .big{display:block;font-size:30px;margin-bottom:6px}
+  .mode small{display:block;color:var(--dim);font-weight:500;font-size:11px;margin-top:4px}
+  .mode:hover,.mode.sel{border-color:var(--cyan);box-shadow:0 0 18px rgba(63,242,255,.35);transform:translateY(-2px)}
+  .btn{cursor:pointer;border:none;border-radius:999px;padding:13px 38px;font-size:17px;font-weight:800;font-family:inherit;
+    background:linear-gradient(90deg,var(--pink),#9b5cff);color:white;box-shadow:0 0 24px rgba(255,79,216,.45);margin:6px}
+  .btn.ghost{background:transparent;border:2px solid var(--line);box-shadow:none;color:var(--text)}
+  .tips{font-size:13px;color:var(--dim);line-height:1.8;margin-top:18px;text-align:left;
+    background:rgba(0,0,0,.25);border-radius:12px;padding:12px 16px}
+  .tips b{color:var(--text)}
+  kbd{background:#2a2160;border:1px solid #4b3ca0;border-radius:5px;padding:1px 6px;font-size:12px;color:var(--text)}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:20px 0}
+  .stat{background:rgba(0,0,0,.25);border-radius:12px;padding:10px}
+  .stat .v{font-size:24px;font-weight:800;color:var(--yellow)}
+  .stat .l{font-size:12px;color:var(--dim)}
+  .best{color:var(--dim);font-size:13px;margin-top:6px}
+  .newbest{color:var(--green);font-weight:800;animation:pulse 1s infinite}
+  @keyframes pulse{50%{opacity:.4}}
+  .row{display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap;color:var(--dim);font-size:13px}
+  .row label{cursor:pointer}
+  #imeWarn{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--red);color:white;padding:8px 16px;
+    border-radius:10px;font-weight:700;display:none;z-index:5}
+  @media (max-width:640px){.modes{grid-template-columns:repeat(2,1fr)} h1{font-size:32px} .hud .box{min-width:80px;padding:6px 10px}.hud .val{font-size:16px}}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<div class="hud" id="hud" style="display:none">
+  <div class="box"><div class="lbl">分数 Score</div><div class="val" id="score">0</div></div>
+  <div class="mid">
+    <div class="box"><div class="lbl">等级 Level</div><div class="val" id="level">1</div></div>
+    <div class="box"><div class="lbl">连击 Combo</div><div class="val" id="combo">0</div></div>
+  </div>
+  <div class="box" style="text-align:right"><div class="lbl">生命 HP</div><div class="val" id="hearts"></div></div>
+</div>
+
+<div id="imeWarn">⚠ 请关闭输入法（切换为半角英文）再输入</div>
+
+<!-- 开始界面 -->
+<div class="overlay" id="startScr">
+  <div class="card">
+    <h1>打字怪兽</h1>
+    <div class="sub">TYPING MONSTERS · タイピングモンスター</div>
+    <div>选择语言模式</div>
+    <div class="modes" id="modes">
+      <button class="mode sel" data-mode="ja"><span class="big">あ</span>日本語<small>罗马字输入</small></button>
+      <button class="mode" data-mode="zh"><span class="big">中</span>中文<small>拼音输入</small></button>
+      <button class="mode" data-mode="en"><span class="big">A</span>English<small>直接输入</small></button>
+      <button class="mode" data-mode="mix"><span class="big">✦</span>混合<small>三语随机</small></button>
+    </div>
+    <div class="row">
+      <label><input type="checkbox" id="optSound" checked> 音效</label>
+      <label><input type="checkbox" id="optGuide" checked> 显示输入提示</label>
+    </div>
+    <div style="margin-top:18px"><button class="btn" id="startBtn">开始游戏 ▶</button></div>
+    <div class="best" id="bestLine"></div>
+    <div class="tips">
+      <b>玩法：</b>怪兽带着文字从上方逼近，在它冲到底线之前打完它的字就能消灭它。<br>
+      敲下第一个字母会自动锁定一只怪兽，打错会断连击。每 8 只升一级，每 5 级出现 BOSS。<br>
+      <b>日语</b>用罗马字（shi/si、tsu/tu、ん=nn 都可以）；<b>中文</b>用拼音不带声调，ü 打 <kbd>v</kbd>。<br>
+      <kbd>Backspace</kbd> 取消锁定 · <kbd>Esc</kbd> 暂停 · 请先<b>关闭输入法</b>。
+    </div>
+  </div>
+</div>
+
+<!-- 暂停 -->
+<div class="overlay hidden" id="pauseScr">
+  <div class="card">
+    <h1>暂停</h1>
+    <div class="sub">PAUSED</div>
+    <button class="btn" id="resumeBtn">继续</button>
+    <button class="btn ghost" id="quitBtn">返回标题</button>
+  </div>
+</div>
+
+<!-- 结束 -->
+<div class="overlay hidden" id="overScr">
+  <div class="card">
+    <h1>GAME OVER</h1>
+    <div class="sub" id="overMode"></div>
+    <div style="font-size:52px;font-weight:900;color:var(--yellow)" id="finalScore">0</div>
+    <div id="newBest"></div>
+    <div class="stats">
+      <div class="stat"><div class="v" id="sLevel">1</div><div class="l">到达等级</div></div>
+      <div class="stat"><div class="v" id="sKills">0</div><div class="l">消灭怪兽</div></div>
+      <div class="stat"><div class="v" id="sCombo">0</div><div class="l">最高连击</div></div>
+      <div class="stat"><div class="v" id="sAcc">0%</div><div class="l">准确率</div></div>
+      <div class="stat"><div class="v" id="sKpm">0</div><div class="l">每分钟按键</div></div>
+      <div class="stat"><div class="v" id="sTime">0s</div><div class="l">存活时间</div></div>
+    </div>
+    <button class="btn" id="againBtn">再来一局</button>
+    <button class="btn ghost" id="menuBtn">换模式</button>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+/* ===================== 词库 ===================== */
+// 日语：[显示, 读音(平假名, ー 表示长音)]
+const JA = {
+  t1: [["猫","ねこ"],["犬","いぬ"],["空","そら"],["海","うみ"],["山","やま"],["花","はな"],["水","みず"],["星","ほし"],
+       ["月","つき"],["風","かぜ"],["雨","あめ"],["雪","ゆき"],["鳥","とり"],["魚","さかな"],["雲","くも"],["森","もり"],
+       ["光","ひかり"],["虹","にじ"],["川","かわ"],["石","いし"],["夢","ゆめ"],["火","ひ"],["竜","りゅう"],["忍者","にんじゃ"]],
+  t2: [["桜","さくら"],["友達","ともだち"],["学校","がっこう"],["電車","でんしゃ"],["切符","きっぷ"],["新聞","しんぶん"],
+       ["本屋","ほんや"],["りんご","りんご"],["お茶","おちゃ"],["牛乳","ぎゅうにゅう"],["自転車","じてんしゃ"],["先生","せんせい"],
+       ["手紙","てがみ"],["写真","しゃしん"],["音楽","おんがく"],["映画","えいが"],["地球","ちきゅう"],["宇宙","うちゅう"],
+       ["動物","どうぶつ"],["教室","きょうしつ"],["ラーメン","らーめん"],["ゲーム","げーむ"],["勇者","ゆうしゃ"],["魔法","まほう"]],
+  t3: [["ありがとうございます","ありがとうございます"],["こんにちは","こんにちは"],["おはようございます","おはようございます"],
+       ["いただきます","いただきます"],["宜しくお願いします","よろしくおねがいします"],["新幹線","しんかんせん"],
+       ["コンピューター","こんぴゅーたー"],["チョコレート","ちょこれーと"],["遊園地","ゆうえんち"],["図書館","としょかん"],
+       ["病院","びょういん"],["携帯電話","けいたいでんわ"],["飛行機","ひこうき"],["授業","じゅぎょう"],["誕生日","たんじょうび"],
+       ["富士山","ふじさん"],["お祭り","おまつり"],["キーボード","きーぼーど"],["冒険の始まり","ぼうけんのはじまり"]],
+  boss:[["生麦生米生卵","なまむぎなまごめなまたまご"],["赤巻紙青巻紙黄巻紙","あかまきがみあおまきがみきまきがみ"],
+       ["隣の客はよく柿食う客だ","となりのきゃくはよくかきくうきゃくだ"],["日本語のタイピングは楽しい","にほんごのたいぴんぐはたのしい"],
+       ["魔王を倒して世界を救え","まおうをたおしてせかいをすくえ"]]
+};
+// 中文：[汉字, 拼音]
+const ZH = {
+  t1: [["猫","mao"],["狗","gou"],["山","shan"],["水","shui"],["火","huo"],["花","hua"],["天","tian"],["月","yue"],["风","feng"],
+       ["雨","yu"],["鱼","yu"],["鸟","niao"],["云","yun"],["星","xing"],["树","shu"],["书","shu"],["你好","nihao"],["中国","zhongguo"],
+       ["学生","xuesheng"],["朋友","pengyou"],["龙","long"],["剑","jian"]],
+  t2: [["老师","laoshi"],["电脑","diannao"],["手机","shouji"],["飞机","feiji"],["熊猫","xiongmao"],["苹果","pingguo"],["咖啡","kafei"],
+       ["音乐","yinyue"],["电影","dianying"],["学校","xuexiao"],["图书馆","tushuguan"],["火车站","huochezhan"],["太阳","taiyang"],
+       ["月亮","yueliang"],["彩虹","caihong"],["宇宙","yuzhou"],["恐龙","konglong"],["绿色","lvse"],["旅行","lvxing"],["勇士","yongshi"],
+       ["魔法","mofa"],["怪兽","guaishou"]],
+  t3: [["一帆风顺","yifanfengshun"],["马到成功","madaochenggong"],["自强不息","ziqiangbuxi"],["画龙点睛","hualongdianjing"],
+       ["守株待兔","shouzhudaitu"],["井底之蛙","jingdizhiwa"],["对牛弹琴","duiniutanqin"],["万事如意","wanshiruyi"],
+       ["生日快乐","shengrikuaile"],["新年快乐","xinniankuaile"],["人工智能","rengongzhineng"],["程序设计","chengxusheji"],
+       ["互联网","hulianwang"],["计算机","jisuanji"],["勇往直前","yongwangzhiqian"]],
+  boss:[["吃葡萄不吐葡萄皮","chiputaobutuputaopi"],["四是四十是十","sishisishishishi"],["千里之行始于足下","qianlizhixingshiyuzuxia"],
+       ["学而不思则罔","xueerbusizewang"],["欲穷千里目更上一层楼","yuqiongqianlimugengshangyicenglou"]]
+};
+const EN = {
+  t1: ["cat","dog","sun","moon","star","fire","tree","fish","bird","rain","wind","snow","frog","king","ship","gold","ruby","wolf","bear","lion","bat","orb"],
+  t2: ["dragon","wizard","castle","planet","rocket","shadow","knight","silver","thunder","crystal","monster","galaxy","forest","dungeon","phoenix","keyboard","goblin","potion"],
+  t3: ["adventure","lightning","butterfly","invisible","labyrinth","champion","mysterious","extraordinary","javascript","electricity","necromancer","spellbook"],
+  boss:["the quick brown fox","practice makes perfect","never give up","slay the dragon king","type faster than light"]
+};
+
+/* ===================== 罗马字引擎 ===================== */
+const KANA = {
+  "あ":["a"],"い":["i","yi"],"う":["u","wu","whu"],"え":["e"],"お":["o"],
+  "か":["ka","ca"],"き":["ki"],"く":["ku","cu","qu"],"け":["ke"],"こ":["ko","co"],
+  "さ":["sa"],"し":["shi","si","ci"],"す":["su"],"せ":["se","ce"],"そ":["so"],
+  "た":["ta"],"ち":["chi","ti"],"つ":["tsu","tu"],"て":["te"],"と":["to"],
+  "な":["na"],"に":["ni"],"ぬ":["nu"],"ね":["ne"],"の":["no"],
+  "は":["ha"],"ひ":["hi"],"ふ":["fu","hu"],"へ":["he"],"ほ":["ho"],
+  "ま":["ma"],"み":["mi"],"む":["mu"],"め":["me"],"も":["mo"],
+  "や":["ya"],"ゆ":["yu"],"よ":["yo"],
+  "ら":["ra"],"り":["ri"],"る":["ru"],"れ":["re"],"ろ":["ro"],
+  "わ":["wa"],"を":["wo"],"ん":["nn","xn","n'"],
+  "が":["ga"],"ぎ":["gi"],"ぐ":["gu"],"げ":["ge"],"ご":["go"],
+  "ざ":["za"],"じ":["ji","zi"],"ず":["zu"],"ぜ":["ze"],"ぞ":["zo"],
+  "だ":["da"],"ぢ":["di"],"づ":["du"],"で":["de"],"ど":["do"],
+  "ば":["ba"],"び":["bi"],"ぶ":["bu"],"べ":["be"],"ぼ":["bo"],
+  "ぱ":["pa"],"ぴ":["pi"],"ぷ":["pu"],"ぺ":["pe"],"ぽ":["po"],"ゔ":["vu"],
+  "ぁ":["xa","la"],"ぃ":["xi","li"],"ぅ":["xu","lu"],"ぇ":["xe","le"],"ぉ":["xo","lo"],
+  "ゃ":["xya","lya"],"ゅ":["xyu","lyu"],"ょ":["xyo","lyo"],"っ":["xtu","ltu","xtsu"],"ゎ":["xwa","lwa"],
+  "ー":["-"],"、":[","],"。":["."],"！":["!"],"？":["?"]
+};
+const COMBO = {
+  "きゃ":["kya"],"きゅ":["kyu"],"きょ":["kyo"],"しゃ":["sha","sya"],"しゅ":["shu","syu"],"しょ":["sho","syo"],"しぇ":["she","sye"],
+  "ちゃ":["cha","tya","cya"],"ちゅ":["chu","tyu","cyu"],"ちょ":["cho","tyo","cyo"],"ちぇ":["che","tye"],
+  "にゃ":["nya"],"にゅ":["nyu"],"にょ":["nyo"],"ひゃ":["hya"],"ひゅ":["hyu"],"ひょ":["hyo"],
+  "みゃ":["mya"],"みゅ":["myu"],"みょ":["myo"],"りゃ":["rya"],"りゅ":["ryu"],"りょ":["ryo"],
+  "ぎゃ":["gya"],"ぎゅ":["gyu"],"ぎょ":["gyo"],"じゃ":["ja","zya","jya"],"じゅ":["ju","zyu","jyu"],"じょ":["jo","zyo","jyo"],"じぇ":["je","zye"],
+  "びゃ":["bya"],"びゅ":["byu"],"びょ":["byo"],"ぴゃ":["pya"],"ぴゅ":["pyu"],"ぴょ":["pyo"],
+  "ふぁ":["fa"],"ふぃ":["fi"],"ふぇ":["fe"],"ふぉ":["fo"],"てぃ":["thi"],"でぃ":["dhi"],"うぃ":["wi"],"うぇ":["we"],"ゔぁ":["va"]
+};
+const toHira = s => s.replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+const cross = (a, b) => { const r = []; a.forEach(x => b.forEach(y => r.push(x + y))); return r; };
+const uniq = a => [...new Set(a)];
+
+function kanaUnits(reading) {
+  const s = toHira(reading); const raw = [];
+  for (let i = 0; i < s.length;) {
+    const two = s.substr(i, 2);
+    if (COMBO[two]) { raw.push(uniq([...COMBO[two], ...cross(KANA[two[0]], KANA[two[1]])])); i += 2; }
+    else { raw.push(KANA[s[i]] ? [...KANA[s[i]]] : [s[i]]); i++; }
+  }
+  // 处理 っ 与 ん
+  const out = [];
+  for (let i = 0; i < raw.length; i++) {
+    const cur = raw[i], ch = toHira(reading)[0];
+    if (cur.includes("xtu") && i + 1 < raw.length) {           // っ + 下一个
+      const nx = raw[i + 1];
+      const dbl = nx.filter(o => /^[bcdfghjklmpqrstvwxyz]/.test(o) && !o.startsWith("n")).map(o => o[0] + o);
+      nx.filter(o => o.startsWith("ch")).forEach(o => dbl.push("t" + o));   // っちゃ = tcha
+      out.push(uniq([...dbl, ...cross(cur, nx)])); i++; continue;
+    }
+    if (cur.includes("nn") && cur.includes("xn")) {             // ん
+      const nx = raw[i + 1];
+      const opts = [...cur];
+      if (nx && nx.every(o => !/^[aiueoyn']/.test(o))) opts.push("n");
+      out.push(opts); continue;
+    }
+    out.push(cur);
+  }
+  return out.map(o => ({ opts: o }));
+}
+const letterUnits = s => [...s].map(c => ({ opts: [c] }));
+
+// 输入匹配：返回新状态或 null
+function step(units, st, ch) {
+  if (st.ui >= units.length) return null;
+  const u = units[st.ui], nb = st.buf + ch;
+  if (u.opts.some(o => o.startsWith(nb))) {
+    const exact = u.opts.includes(nb);
+    const longer = u.opts.some(o => o.length > nb.length && o.startsWith(nb));
+    if (exact && (!longer || st.ui === units.length - 1)) return { ui: st.ui + 1, buf: "", typed: st.typed + ch };
+    return { ui: st.ui, buf: nb, typed: st.typed + ch };
+  }
+  if (st.buf && u.opts.includes(st.buf)) {   // 当前音节已可完成（如 n），转入下一音节
+    return step(units, { ui: st.ui + 1, buf: "", typed: st.typed }, ch);
+  }
+  return null;
+}
+function remaining(units, st) {
+  let r = "";
+  if (st.ui < units.length) {
+    const u = units[st.ui];
+    const o = u.opts.find(o => o.startsWith(st.buf) && o.length > st.buf.length) || u.opts[0];
+    r += o.slice(st.buf.length);
+    for (let i = st.ui + 1; i < units.length; i++) r += units[i].opts[0];
+  }
+  return r;
+}
+
+/* ===================== 画布与工具 ===================== */
+const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+let W = 0, H = 0, DPR = 1;
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  cv.width = W * DPR; cv.height = H * DPR;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+addEventListener("resize", resize); resize();
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = a => a[(Math.random() * a.length) | 0];
+const $ = id => document.getElementById(id);
+const FONT = '"PingFang SC","Hiragino Sans","Noto Sans JP","Noto Sans SC","Microsoft YaHei","Segoe UI",sans-serif';
+const MONO = '"SF Mono","Consolas","Menlo",monospace';
+
+/* ===================== 音效 ===================== */
+let actx = null;
+function beep(freq, dur = 0.08, type = "square", vol = 0.06, slide = 0) {
+  if (!$("optSound").checked) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime;
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
+  } catch (e) {}
+}
+
+/* ===================== 怪兽绘制（程序化生成） ===================== */
+const SHAPES = ["blob", "ghost", "eye", "bat", "robot", "spiky", "squid", "slime"];
+function makeLook(boss) {
+  return {
+    shape: boss ? pick(["spiky", "robot", "squid", "eye"]) : pick(SHAPES),
+    hue: rand(0, 360) | 0, eyes: boss ? 3 : pick([1, 2, 2, 2, 3]),
+    horns: Math.random() < (boss ? 1 : .35), teeth: Math.random() < .5, phase: rand(0, 6.28)
+  };
+}
+function drawMonster(m, t) {
+  const L = m.look, r = m.r, x = m.x, y = m.y + Math.sin(t * 3 + L.phase) * 4;
+  const c1 = `hsl(${L.hue},90%,62%)`, c2 = `hsl(${(L.hue + 40) % 360},85%,40%)`;
+  ctx.save(); ctx.translate(x, y);
+  if (m.hitFlash > 0) ctx.translate(rand(-3, 3), rand(-3, 3));
+  ctx.shadowColor = c1; ctx.shadowBlur = m.locked ? 30 : 14;
+  const g = ctx.createRadialGradient(-r * .3, -r * .4, r * .1, 0, 0, r * 1.1);
+  g.addColorStop(0, `hsl(${L.hue},100%,80%)`); g.addColorStop(.6, c1); g.addColorStop(1, c2);
+  ctx.fillStyle = m.hitFlash > 0 ? "#fff" : g;
+  ctx.beginPath();
+  switch (L.shape) {
+    case "blob": for (let i = 0; i <= 24; i++) { const a = i / 24 * 6.283, rr = r * (1 + .08 * Math.sin(a * 5 + t * 4)); i ? ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : ctx.moveTo(rr, 0); } break;
+    case "ghost": ctx.arc(0, -r * .1, r * .9, Math.PI, 0); for (let i = 0; i <= 6; i++) ctx.lineTo(r * .9 - i * r * .3, r * .8 + (i % 2 ? -r * .2 : 0) + Math.sin(t * 6 + i) * 3); break;
+    case "eye": ctx.arc(0, 0, r, 0, 6.283); break;
+    case "bat": ctx.ellipse(0, 0, r * .7, r * .75, 0, 0, 6.283);
+      for (const s of [-1, 1]) { const f = Math.sin(t * 10 + L.phase) * .25; ctx.moveTo(s * r * .5, -r * .2); ctx.quadraticCurveTo(s * r * 1.6, -r * (1 + f), s * r * 1.7, r * .2); ctx.quadraticCurveTo(s * r * 1.2, 0, s * r * .5, r * .3); } break;
+    case "robot": ctx.roundRect ? ctx.roundRect(-r * .85, -r * .8, r * 1.7, r * 1.6, r * .25) : ctx.rect(-r * .85, -r * .8, r * 1.7, r * 1.6); break;
+    case "spiky": for (let i = 0; i <= 28; i++) { const a = i / 28 * 6.283 + t * .5, rr = i % 2 ? r * .78 : r * 1.12; i ? ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : ctx.moveTo(rr, 0); } break;
+    case "squid": ctx.ellipse(0, -r * .2, r * .8, r * .7, 0, 0, 6.283);
+      for (let i = 0; i < 5; i++) { const bx = -r * .6 + i * r * .3; ctx.moveTo(bx - 5, r * .3); ctx.quadraticCurveTo(bx + Math.sin(t * 5 + i) * 10, r * .9, bx, r * 1.2); ctx.lineTo(bx + 6, r * .3); } break;
+    case "slime": ctx.moveTo(-r, r * .7); ctx.quadraticCurveTo(-r, -r * 1.1, 0, -r * (1 + .1 * Math.sin(t * 4))); ctx.quadraticCurveTo(r, -r * 1.1, r, r * .7); ctx.closePath(); break;
+  }
+  ctx.fill(); ctx.shadowBlur = 0;
+  // 角
+  if (L.horns) { ctx.fillStyle = `hsl(${(L.hue + 180) % 360},80%,70%)`;
+    for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(s * r * .3, -r * .65); ctx.lineTo(s * r * .65, -r * 1.35); ctx.lineTo(s * r * .6, -r * .55); ctx.fill(); } }
+  if (m.boss) { ctx.fillStyle = "#ffe14d"; ctx.beginPath(); const cy = -r * 1.15;
+    ctx.moveTo(-r * .45, cy); ctx.lineTo(-r * .45, cy - r * .35); ctx.lineTo(-r * .22, cy - r * .15); ctx.lineTo(0, cy - r * .45); ctx.lineTo(r * .22, cy - r * .15); ctx.lineTo(r * .45, cy - r * .35); ctx.lineTo(r * .45, cy); ctx.fill(); }
+  // 眼睛（看向玩家）
+  const look = Math.atan2(H - 60 - y, W / 2 - x), er = L.shape === "eye" ? r * .55 : r * (L.eyes === 1 ? .36 : .24);
+  const pos = L.eyes === 1 ? [[0, -r * .15]] : L.eyes === 2 ? [[-r * .32, -r * .2], [r * .32, -r * .2]] : [[-r * .4, -r * .1], [r * .4, -r * .1], [0, -r * .45]];
+  const blink = (Math.sin(t * 1.3 + L.phase * 3) > .97);
+  for (const [ex, ey] of (L.shape === "eye" ? [[0, 0]] : pos)) {
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(ex, ey, er, blink ? er * .1 : er, 0, 0, 6.283); ctx.fill();
+    if (!blink) { ctx.fillStyle = L.shape === "eye" ? `hsl(${L.hue},90%,35%)` : "#140a2a"; ctx.beginPath();
+      ctx.arc(ex + Math.cos(look) * er * .4, ey + Math.sin(look) * er * .4, er * .5, 0, 6.283); ctx.fill();
+      if (L.shape === "eye") { ctx.fillStyle = "#000"; ctx.beginPath(); ctx.arc(ex + Math.cos(look) * er * .4, ey + Math.sin(look) * er * .4, er * .22, 0, 6.283); ctx.fill(); } }
+  }
+  // 嘴
+  if (L.shape !== "eye") {
+    ctx.fillStyle = "#140a2a"; ctx.beginPath(); const mw = r * .45, my = r * .3;
+    ctx.ellipse(0, my, mw, r * .14 + Math.max(0, Math.sin(t * 5 + L.phase)) * r * .06, 0, 0, Math.PI); ctx.fill();
+    if (L.teeth) { ctx.fillStyle = "#fff"; for (let i = -1; i <= 1; i += 2) { ctx.beginPath(); ctx.moveTo(i * mw * .5 - 4, my); ctx.lineTo(i * mw * .5 + 4, my); ctx.lineTo(i * mw * .5, my + 8); ctx.fill(); } }
+  }
+  ctx.restore();
+}
+
+/* ===================== 游戏状态 ===================== */
+let G = null, mode = "ja", running = false, paused = false, last = 0;
+const BEST_KEY = "typingMonstersBest";
+function loadBest() { try { return JSON.parse(localStorage.getItem(BEST_KEY)) || {}; } catch (e) { return {}; } }
+function saveBest(b) { try { localStorage.setItem(BEST_KEY, JSON.stringify(b)); } catch (e) {} }
+const MODE_NAME = { ja: "日本語", zh: "中文", en: "English", mix: "混合" };
+
+function newGame() {
+  G = { enemies: [], parts: [], pops: [], beams: [], score: 0, combo: 0, maxCombo: 0, hp: 5, maxHp: 5,
+    kills: 0, level: 1, keys: 0, misses: 0, time: 0, spawnT: 0.6, lock: null, shake: 0, bossAlive: false,
+    bossDoneFor: 0, flash: 0, banner: { text: "LEVEL 1", t: 2 }, recent: [] };
+}
+
+function makeWord(tier, lang) {
+  const L = lang === "mix" ? pick(["ja", "zh", "en"]) : lang;
+  let item, tries = 0;
+  do {
+    if (L === "ja") { const [d, r] = pick(JA[tier]); item = { lang: L, display: d, sub: d === r ? "" : r, units: kanaUnits(r), key: d }; }
+    else if (L === "zh") { const [d, p] = pick(ZH[tier]); item = { lang: L, display: d, sub: "", units: letterUnits(p), key: d }; }
+    else { const w = pick(EN[tier]); item = { lang: L, display: w, sub: "", units: letterUnits(w), key: w }; }
+  } while ((G.recent.includes(item.key) || G.enemies.some(e => e.word.key === item.key)) && ++tries < 20);
+  G.recent.push(item.key); if (G.recent.length > 8) G.recent.shift();
+  item.len = item.units.reduce((s, u) => s + u.opts[0].length, 0);
+  return item;
+}
+
+function tierFor(lv) {
+  const r = Math.random();
+  if (lv <= 2) return "t1";
+  if (lv <= 4) return r < .5 ? "t1" : "t2";
+  if (lv <= 7) return r < .2 ? "t1" : r < .7 ? "t2" : "t3";
+  return r < .4 ? "t2" : "t3";
+}
+const diff = lv => ({
+  perChar: Math.max(0.18, 0.78 - lv * 0.045),
+  maxOn: Math.min(7, 1 + Math.ceil(lv / 1.6)),
+  interval: Math.max(0.55, 2.8 - lv * 0.18)
+});
+
+function spawn(boss = false) {
+  const word = makeWord(boss ? "boss" : tierFor(G.level), mode);
+  const d = diff(G.level);
+  const life = boss ? 4 + word.len * Math.max(0.3, d.perChar * 1.25) : Math.max(2.2, 4 - G.level * 0.15) + word.len * d.perChar;
+  const r = boss ? 58 : rand(28, 38);
+  let x, ok, tries = 0;
+  do { x = rand(90, W - 90); ok = G.enemies.every(e => Math.abs(e.x - x) > 150 || e.y > 220); } while (!ok && ++tries < 15);
+  G.enemies.push({ x, y: -r, y0: -r, r, word, st: { ui: 0, buf: "", typed: "" }, life, t: 0, boss,
+    look: makeLook(boss), locked: false, hitFlash: 0, dead: false });
+  if (boss) { G.bossAlive = true; G.banner = { text: "⚠ BOSS ⚠", t: 2.2, color: "#ff4d6a" }; beep(110, .5, "sawtooth", .08, -60); }
+}
+
+const playerY = () => H - 70;
+const dangerY = () => H - 140;
+
+function update(dt) {
+  G.time += dt;
+  const d = diff(G.level);
+  // 生成
+  const bossDue = G.level % 5 === 0 && G.bossDoneFor !== G.level;
+  if (bossDue && !G.bossAlive) { G.bossDoneFor = G.level; spawn(true); }
+  G.spawnT -= dt;
+  if (G.spawnT <= 0 && G.enemies.filter(e => !e.boss).length < (G.bossAlive ? Math.max(1, d.maxOn - 3) : d.maxOn)) {
+    spawn(); G.spawnT = d.interval * rand(.8, 1.2);
+  } else if (G.enemies.length === 0) G.spawnT = Math.min(G.spawnT, .25);
+
+  for (const e of G.enemies) {
+    e.t += dt; e.hitFlash = Math.max(0, e.hitFlash - dt);
+    const p = Math.min(1, e.t / e.life);
+    e.y = e.y0 + (dangerY() - e.y0) * (p * (.85 + .15 * p));
+    if (e.t >= e.life && !e.dead) {     // 冲到底线：攻击玩家
+      e.dead = true; G.hp--; G.combo = 0; G.shake = .4; G.flash = .35;
+      if (G.lock === e) G.lock = null;
+      if (e.boss) G.bossAlive = false;
+      burst(e.x, e.y, "#ff4d6a", 30); beep(80, .3, "sawtooth", .1, -40);
+      G.pops.push({ x: e.x, y: e.y - 30, text: "-1 ♥", color: "#ff4d6a", t: 1.2 });
+      if (G.hp <= 0) return gameOver();
+    }
+  }
+  G.enemies = G.enemies.filter(e => !e.dead);
+  for (const p of G.parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; p.t -= dt; }
+  G.parts = G.parts.filter(p => p.t > 0);
+  for (const p of G.pops) { p.y -= 40 * dt; p.t -= dt; }
+  G.pops = G.pops.filter(p => p.t > 0);
+  for (const b of G.beams) b.t -= dt;
+  G.beams = G.beams.filter(b => b.t > 0);
+  G.shake = Math.max(0, G.shake - dt); G.flash = Math.max(0, G.flash - dt);
+  if (G.banner) { G.banner.t -= dt; if (G.banner.t <= 0) G.banner = null; }
+}
+
+function burst(x, y, color, n) {
+  for (let i = 0; i < n; i++) { const a = rand(0, 6.283), s = rand(80, 360);
+    G.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 100, t: rand(.4, .9), color, size: rand(2, 5) }); }
+}
+
+function kill(e) {
+  e.dead = true; G.kills++; G.combo++; G.maxCombo = Math.max(G.maxCombo, G.combo);
+  const mult = Math.min(4, 1 + Math.floor(G.combo / 10) * 0.5);
+  const timeBonus = Math.round((1 - e.t / e.life) * 50);
+  const pts = Math.round((e.word.len * 10 * (1 + G.level * 0.2) + timeBonus) * mult * (e.boss ? 3 : 1));
+  G.score += pts;
+  burst(e.x, e.y, `hsl(${e.look.hue},90%,65%)`, e.boss ? 80 : 32);
+  G.pops.push({ x: e.x, y: e.y - 20, text: `+${pts}` + (mult > 1 ? ` ×${mult}` : ""), color: "#ffe14d", t: 1.1 });
+  beep(e.boss ? 330 : 660, e.boss ? .4 : .15, "triangle", .08, e.boss ? 600 : 400);
+  if (e.boss) { G.bossAlive = false; G.shake = .5; G.hp = Math.min(G.maxHp, G.hp + 1);
+    G.pops.push({ x: e.x, y: e.y + 20, text: "+1 ♥", color: "#5dff9b", t: 1.5 }); }
+  G.lock = null;
+  const newLv = 1 + Math.floor(G.kills / 8);
+  if (newLv > G.level) { G.level = newLv; G.banner = { text: `LEVEL ${newLv}`, t: 1.8, color: "#3ff2ff" }; beep(523, .12, "square", .06); setTimeout(() => beep(784, .2, "square", .06), 110); }
+}
+
+function onKey(ch) {
+  if (!G || !running || paused) return;
+  G.keys++;
+  let target = G.lock;
+  if (target && !G.enemies.includes(target)) target = G.lock = null;
+  if (!target) {
+    const cands = G.enemies.filter(e => step(e.word.units, e.st, ch));
+    if (cands.length) { cands.sort((a, b) => (a.life - a.t) - (b.life - b.t)); target = cands[0]; G.lock = target; }
+  }
+  const ns = target && step(target.word.units, target.st, ch);
+  if (!ns) {
+    G.misses++; G.combo = 0; G.flash = Math.max(G.flash, .12); beep(140, .08, "square", .05);
+    if (target) target.hitFlash = .1;
+    return;
+  }
+  target.st = ns; target.hitFlash = .06;
+  G.beams.push({ x: target.x, y: target.y, t: .12 });
+  beep(880 + ns.typed.length * 15, .03, "square", .025);
+  if (ns.ui >= target.word.units.length) kill(target);
+}
+
+/* ===================== 渲染 ===================== */
+let stars = [];
+function initStars() { stars = Array.from({ length: 140 }, () => ({ x: Math.random(), y: Math.random(), s: rand(.5, 2), v: rand(.005, .03) })); }
+initStars();
+
+function render(t) {
+  ctx.save();
+  ctx.fillStyle = "#0b0820"; ctx.fillRect(0, 0, W, H);
+  if (G && G.shake > 0) ctx.translate(rand(-8, 8) * G.shake, rand(-8, 8) * G.shake);
+  // 星空
+  for (const s of stars) { s.y = (s.y + s.v * (1 / 60)) % 1; ctx.fillStyle = `rgba(200,190,255,${.3 + s.s / 3})`; ctx.fillRect(s.x * W, s.y * H, s.s, s.s); }
+  // 网格地平线
+  ctx.strokeStyle = "rgba(255,79,216,.18)"; ctx.lineWidth = 1;
+  const hy = H * .62;
+  for (let i = 0; i < 14; i++) { const yy = hy + Math.pow(i / 14, 2) * (H - hy) + ((t * 30) % 20) * (i / 14); ctx.beginPath(); ctx.moveTo(0, yy); ctx.lineTo(W, yy); ctx.stroke(); }
+  for (let i = -12; i <= 12; i++) { ctx.beginPath(); ctx.moveTo(W / 2 + i * 40, hy); ctx.lineTo(W / 2 + i * 160, H); ctx.stroke(); }
+
+  if (G && running) {
+    // 危险线
+    const dy = dangerY();
+    ctx.strokeStyle = "rgba(255,77,106,.55)"; ctx.setLineDash([12, 10]); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, dy); ctx.lineTo(W, dy); ctx.stroke(); ctx.setLineDash([]);
+    // 玩家炮台
+    const px = W / 2, py = playerY();
+    const aim = G.lock ? Math.atan2(G.lock.y - py, G.lock.x - px) : -Math.PI / 2;
+    ctx.save(); ctx.translate(px, py);
+    ctx.shadowColor = "#3ff2ff"; ctx.shadowBlur = 20;
+    ctx.fillStyle = "#1b1450"; ctx.strokeStyle = "#3ff2ff"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0, 10, 34, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.rotate(aim + Math.PI / 2); ctx.fillStyle = "#3ff2ff"; ctx.fillRect(-6, -46, 12, 40);
+    ctx.restore();
+    // 光束
+    for (const b of G.beams) { ctx.strokeStyle = `rgba(63,242,255,${b.t / .12})`; ctx.lineWidth = 3; ctx.shadowColor = "#3ff2ff"; ctx.shadowBlur = 15;
+      ctx.beginPath(); ctx.moveTo(px, py - 10); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.shadowBlur = 0; }
+    // 怪兽
+    const sorted = [...G.enemies].sort((a, b) => (a === G.lock) - (b === G.lock));
+    for (const e of sorted) { e.locked = e === G.lock; drawMonster(e, t); }
+    for (const e of sorted) drawLabel(e);
+    // 粒子
+    for (const p of G.parts) { ctx.globalAlpha = Math.min(1, p.t * 2); ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.size, p.size); }
+    ctx.globalAlpha = 1;
+    for (const p of G.pops) { ctx.globalAlpha = Math.min(1, p.t * 1.5); ctx.fillStyle = p.color; ctx.font = `800 20px ${FONT}`; ctx.textAlign = "center"; ctx.fillText(p.text, p.x, p.y); }
+    ctx.globalAlpha = 1;
+    // 横幅
+    if (G.banner) { const b = G.banner; ctx.globalAlpha = Math.min(1, b.t * 2); ctx.font = `900 ${Math.min(64, W / 10)}px ${FONT}`; ctx.textAlign = "center";
+      ctx.fillStyle = b.color || "#3ff2ff"; ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 30; ctx.fillText(b.text, W / 2, H * .42); ctx.shadowBlur = 0; ctx.globalAlpha = 1; }
+    if (G.flash > 0) { ctx.fillStyle = `rgba(255,40,80,${G.flash * .5})`; ctx.fillRect(0, 0, W, H); }
+  }
+  ctx.restore();
+}
+
+function drawLabel(e) {
+  const w = e.word, guide = $("optGuide").checked;
+  const y = e.y + e.r + 26 + (e.boss ? 10 : 0);
+  const big = e.boss ? 26 : 22;
+  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  // 时间条
+  const p = 1 - e.t / e.life, bw = Math.max(70, e.r * 2.2);
+  ctx.fillStyle = "rgba(0,0,0,.5)"; ctx.fillRect(e.x - bw / 2, e.y - e.r - 18, bw, 6);
+  ctx.fillStyle = p > .5 ? "#5dff9b" : p > .25 ? "#ffe14d" : "#ff4d6a"; ctx.fillRect(e.x - bw / 2, e.y - e.r - 18, bw * p, 6);
+
+  const typed = e.st.typed, rest = remaining(w.units, e.st);
+  const showRoman = w.lang !== "en";
+  ctx.font = `800 ${big}px ${FONT}`;
+  const dispW = ctx.measureText(w.display).width;
+  ctx.font = `700 15px ${MONO}`;
+  const rw = showRoman && guide ? ctx.measureText(typed + rest).width : 0;
+  ctx.font = `500 13px ${FONT}`;
+  const sw = w.sub ? ctx.measureText(w.sub).width : 0;
+  const boxW = Math.max(dispW, rw, sw) + 24;
+  const boxH = (big + 12) + (w.sub ? 18 : 0) + (showRoman && guide ? 22 : 0);
+  ctx.fillStyle = e.locked ? "rgba(63,242,255,.18)" : "rgba(15,10,40,.82)";
+  ctx.strokeStyle = e.locked ? "#3ff2ff" : "rgba(143,136,201,.5)"; ctx.lineWidth = e.locked ? 2 : 1;
+  ctx.beginPath(); (ctx.roundRect ? ctx.roundRect(e.x - boxW / 2, y - big - 4, boxW, boxH, 10) : ctx.rect(e.x - boxW / 2, y - big - 4, boxW, boxH)); ctx.fill(); ctx.stroke();
+
+  let ly = y + 2;
+  if (w.lang === "en") {        // 英文：直接在单词上着色
+    ctx.font = `800 ${big}px ${MONO}`;
+    const full = typed + rest, fw = ctx.measureText(full).width; let x0 = e.x - fw / 2;
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#3ff2ff"; ctx.fillText(typed, x0, ly); x0 += ctx.measureText(typed).width;
+    ctx.fillStyle = "#fff"; ctx.fillText(rest, x0, ly);
+    ctx.textAlign = "center";
+  } else {
+    ctx.font = `800 ${big}px ${FONT}`;
+    ctx.fillStyle = typed.length ? "#bff9ff" : "#fff"; ctx.fillText(w.display, e.x, ly);
+    if (w.sub) { ly += 18; ctx.font = `500 13px ${FONT}`; ctx.fillStyle = "#c7c1f5"; ctx.fillText(w.sub, e.x, ly); }
+    if (guide) {
+      ly += 21; ctx.font = `700 15px ${MONO}`;
+      const fw = ctx.measureText(typed + rest).width; let x0 = e.x - fw / 2; ctx.textAlign = "left";
+      ctx.fillStyle = "#3ff2ff"; ctx.fillText(typed, x0, ly); x0 += ctx.measureText(typed).width;
+      ctx.fillStyle = "#8f88c9"; ctx.fillText(rest, x0, ly); ctx.textAlign = "center";
+    } else if (typed) {
+      ly += 21; ctx.font = `700 15px ${MONO}`; ctx.fillStyle = "#3ff2ff"; ctx.fillText(typed, e.x, ly);
+    }
+  }
+}
+
+function hud() {
+  $("score").textContent = G.score.toLocaleString();
+  $("level").textContent = G.level;
+  const mult = Math.min(4, 1 + Math.floor(G.combo / 10) * 0.5);
+  $("combo").textContent = G.combo + (mult > 1 ? ` ×${mult}` : "");
+  $("hearts").innerHTML = "<span style='color:#ff4d6a'>" + "♥".repeat(Math.max(0, G.hp)) + "</span><span style='color:#3a2d7a'>" + "♥".repeat(Math.max(0, G.maxHp - G.hp)) + "</span>";
+}
+
+function loop(ts) {
+  const t = ts / 1000, dt = Math.min(0.05, t - (last || t)); last = t;
+  if (running && !paused) { update(dt); if (running) hud(); }
+  render(t);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ===================== 流程控制 ===================== */
+function start() {
+  newGame(); running = true; paused = false;
+  ["startScr", "overScr", "pauseScr"].forEach(id => $(id).classList.add("hidden"));
+  $("hud").style.display = "flex"; hud(); beep(440, .1); setTimeout(() => beep(660, .15), 100);
+}
+function gameOver() {
+  running = false; $("hud").style.display = "none";
+  const acc = G.keys ? Math.round((G.keys - G.misses) / G.keys * 100) : 0;
+  $("finalScore").textContent = G.score.toLocaleString();
+  $("overMode").textContent = "模式：" + MODE_NAME[mode];
+  $("sLevel").textContent = G.level; $("sKills").textContent = G.kills; $("sCombo").textContent = G.maxCombo;
+  $("sAcc").textContent = acc + "%"; $("sKpm").textContent = Math.round((G.keys - G.misses) / Math.max(1, G.time) * 60);
+  $("sTime").textContent = Math.round(G.time) + "s";
+  const best = loadBest();
+  if (G.score > (best[mode] || 0)) { best[mode] = G.score; saveBest(best); $("newBest").innerHTML = "<div class='newbest'>★ 新纪录！NEW BEST ★</div>"; }
+  else $("newBest").innerHTML = `<div class="best">最高分：${(best[mode] || 0).toLocaleString()}</div>`;
+  $("overScr").classList.remove("hidden"); beep(220, .6, "sawtooth", .08, -150);
+}
+function showBest() {
+  const b = loadBest();
+  $("bestLine").textContent = "最高分 · " + ["ja", "zh", "en", "mix"].map(m => `${MODE_NAME[m]} ${(b[m] || 0).toLocaleString()}`).join("  |  ");
+}
+function toMenu() { running = false; paused = false; G = null; $("hud").style.display = "none";
+  ["overScr", "pauseScr"].forEach(id => $(id).classList.add("hidden")); $("startScr").classList.remove("hidden"); showBest(); }
+
+document.querySelectorAll(".mode").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll(".mode").forEach(x => x.classList.remove("sel")); b.classList.add("sel"); mode = b.dataset.mode;
+}));
+$("startBtn").onclick = start; $("againBtn").onclick = start; $("menuBtn").onclick = toMenu; $("quitBtn").onclick = toMenu;
+$("resumeBtn").onclick = () => { paused = false; $("pauseScr").classList.add("hidden"); };
+showBest();
+
+let imeTimer = 0;
+addEventListener("keydown", e => {
+  if (e.isComposing || e.key === "Process" || e.keyCode === 229) {
+    $("imeWarn").style.display = "block"; clearTimeout(imeTimer); imeTimer = setTimeout(() => $("imeWarn").style.display = "none", 2500); return;
+  }
+  if (!running) { if (e.key === "Enter" && !$("startScr").classList.contains("hidden")) start();
+    else if (e.key === "Enter" && !$("overScr").classList.contains("hidden")) start(); return; }
+  if (e.key === "Escape") { paused = !paused; $("pauseScr").classList.toggle("hidden", !paused); e.preventDefault(); return; }
+  if (paused) return;
+  if (e.key === "Backspace") { if (G.lock) G.lock = null; e.preventDefault(); return; }
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key.length === 1) {
+    const ch = e.key.toLowerCase();
+    if (/[a-z0-9 '\-,.!?]/.test(ch)) { e.preventDefault(); onKey(ch); }
+  }
+});
+addEventListener("blur", () => { if (running && !paused) { paused = true; $("pauseScr").classList.remove("hidden"); } });
+
+// 供测试
+window.__TM = { kanaUnits, step, remaining };
+})();
+</script>
+</body>
+</html>
