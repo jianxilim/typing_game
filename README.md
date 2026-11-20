@@ -1,7 +1,7 @@
 # 打字怪兽 · Typing Monsters
 
 一款霓虹街机风格的网页打字游戏。怪兽带着文字从屏幕上方逼近，在限定时间内打完它的字就能消灭它。支持 **日语、中文、英文**、**BLEACH篇（死神主题，日语）** 以及 **三语混合** 模式。
-可直接点击此链接直接开始有游玩 :
+Additional mode : typing_game X BLEACH
 Play 👉 https://jianxilim.github.io/typing_game/
 ---
 
