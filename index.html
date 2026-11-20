@@ -53,6 +53,16 @@
   @keyframes pulse{50%{opacity:.4}}
   .row{display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap;color:var(--dim);font-size:13px}
   .row label{cursor:pointer}
+  .card{max-height:96vh;overflow:auto;position:relative}
+  .langbar{position:absolute;top:14px;right:16px;font-size:13px;color:var(--dim)}
+  #imeBox{position:fixed;left:50%;transform:translateX(-50%);width:min(460px,86vw);display:none;z-index:4;
+    background:rgba(15,10,40,.9);border:2px solid var(--cyan);border-radius:14px;color:var(--text);
+    font:700 26px "PingFang SC","Hiragino Sans","Noto Sans JP","Microsoft YaHei",sans-serif;text-align:center;padding:10px 14px;outline:none;
+    box-shadow:0 0 24px rgba(63,242,255,.35)}
+  #imeBox::placeholder{color:#5d5694;font-size:16px;font-weight:500}
+  #imeBox.bad{border-color:var(--red);box-shadow:0 0 24px rgba(255,77,106,.6);animation:shake .25s}
+  @keyframes shake{25%{transform:translateX(calc(-50% - 6px))}75%{transform:translateX(calc(-50% + 6px))}}
+  select{background:#1b1450;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-family:inherit}
   #imeWarn{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--red);color:white;padding:8px 16px;
     border-radius:10px;font-weight:700;display:none;z-index:5}
   @media (max-width:700px){.modes{grid-template-columns:repeat(3,1fr)} h1{font-size:32px} .hud .box{min-width:80px;padding:6px 10px}.hud .val{font-size:16px}}
@@ -62,59 +72,69 @@
 <canvas id="cv"></canvas>
 
 <div class="hud" id="hud" style="display:none">
-  <div class="box"><div class="lbl">分数 Score</div><div class="val" id="score">0</div></div>
+  <div class="box"><div class="lbl" data-i="hudScore"></div><div class="val" id="score">0</div></div>
   <div class="mid">
-    <div class="box"><div class="lbl">等级 Level</div><div class="val" id="level">1</div></div>
-    <div class="box"><div class="lbl">连击 Combo</div><div class="val" id="combo">0</div></div>
+    <div class="box"><div class="lbl" data-i="hudLevel"></div><div class="val" id="level">1</div></div>
+    <div class="box"><div class="lbl" data-i="hudCombo"></div><div class="val" id="combo">0</div></div>
   </div>
-  <div class="box" style="text-align:right"><div class="lbl">生命 HP</div><div class="val" id="hearts"></div></div>
+  <div class="box" style="text-align:right"><div class="lbl" data-i="hudHp"></div><div class="val" id="hearts"></div></div>
 </div>
 
-<div id="imeWarn">⚠ 请关闭输入法（切换为半角英文）再输入</div>
+<input id="imeBox" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-i-ph="imePh">
+<div id="imeWarn" data-i="imeWarn"></div>
 
 <!-- 开始界面 -->
 <div class="overlay" id="startScr">
   <div class="card">
-    <h1>打字怪兽</h1>
+    <div class="langbar">🌐 <select id="optLang">
+      <option value="zh-Hans">简体中文</option><option value="zh-Hant">繁體中文</option>
+      <option value="ja">日本語</option><option value="en">English</option>
+    </select></div>
+    <h1 data-i="title"></h1>
     <div class="sub">TYPING MONSTERS · タイピングモンスター</div>
-    <div>选择语言模式</div>
+    <div data-i="chooseMode"></div>
     <div class="modes" id="modes">
-      <button class="mode sel" data-mode="ja"><span class="big">あ</span>日本語<small>罗马字输入</small></button>
-      <button class="mode" data-mode="zh"><span class="big">中</span>中文<small>拼音输入</small></button>
-      <button class="mode" data-mode="en"><span class="big">A</span>English<small>直接输入</small></button>
-      <button class="mode bleach" data-mode="bleach"><span class="big">卍</span>BLEACH篇<small>死神 · 罗马字</small></button>
-      <button class="mode" data-mode="mix"><span class="big">✦</span>混合<small>三语随机</small></button>
+      <button class="mode sel" data-mode="ja"><span class="big">あ</span><span data-i="m_ja"></span><small data-i="ms_ja"></small></button>
+      <button class="mode" data-mode="zh"><span class="big" id="zhIcon">中</span><span data-i="m_zh"></span><small data-i="ms_zh"></small></button>
+      <button class="mode" data-mode="en"><span class="big">A</span><span data-i="m_en"></span><small data-i="ms_en"></small></button>
+      <button class="mode bleach" data-mode="bleach"><span class="big">卍</span><span data-i="m_bleach"></span><small data-i="ms_bleach"></small></button>
+      <button class="mode" data-mode="mix"><span class="big">✦</span><span data-i="m_mix"></span><small data-i="ms_mix"></small></button>
     </div>
     <div class="row">
-      <label><input type="checkbox" id="optSound" checked> 音效</label>
+      <label><span data-i="inputMethod"></span> <select id="optInput">
+        <option value="key" data-i="inKey"></option>
+        <option value="ime" data-i="inIme"></option>
+      </select></label>
+      <label id="judgeWrap"><span data-i="judge"></span> <select id="optJudge">
+        <option value="loose" data-i="judgeLoose"></option>
+        <option value="strict" data-i="judgeStrict"></option>
+      </select></label>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <label><input type="checkbox" id="optSound" checked> <span data-i="sound"></span></label>
       <label><input type="checkbox" id="optBgm" checked> BGM</label>
-      <label>音量 <input type="range" id="optVol" min="0" max="100" value="60" style="width:90px;vertical-align:middle"></label>
-      <label><input type="checkbox" id="optGuide" checked> 显示输入提示</label>
+      <label><span data-i="volume"></span> <input type="range" id="optVol" min="0" max="100" value="60" style="width:90px;vertical-align:middle"></label>
+      <label><input type="checkbox" id="optGuide" checked> <span data-i="guide"></span></label>
     </div>
     <div class="row" style="margin-top:10px">
-      <span id="bgmInfo">本模式 BGM：原创配乐</span>
-      <button class="btn ghost" id="bgmPick" style="padding:5px 14px;font-size:13px;margin:0">🎵 自定义 BGM</button>
-      <button class="btn ghost" id="bgmClear" style="padding:5px 12px;font-size:13px;margin:0;display:none">✕ 恢复原创</button>
+      <span id="bgmInfo"></span>
+      <button class="btn ghost" id="bgmPick" style="padding:5px 14px;font-size:13px;margin:0" data-i="bgmPick"></button>
+      <button class="btn ghost" id="bgmClear" style="padding:5px 12px;font-size:13px;margin:0;display:none" data-i="bgmClear"></button>
       <input type="file" id="bgmFile" accept="audio/*" style="display:none">
     </div>
-    <div style="margin-top:18px"><button class="btn" id="startBtn">开始游戏 ▶</button></div>
+    <div style="margin-top:18px"><button class="btn" id="startBtn" data-i="start"></button></div>
     <div class="best" id="bestLine"></div>
-    <div class="tips">
-      <b>玩法：</b>怪兽一只一只出现，在计时条耗尽前打完它的字就能消灭它，下一只马上登场。<br>
-      时间到怪兽会攻击你（扣 1 颗心）。打错会断连击，零失误有 PERFECT 加分。每 8 只升一级，每 5 级出现 BOSS。<br>
-      <b>日语</b>用罗马字（shi/si、tsu/tu、ん=nn 都可以）；<b>中文</b>用拼音不带声调，ü 打 <kbd>v</kbd>。<br>
-      <kbd>Esc</kbd> 暂停 · 请先<b>关闭输入法</b>。
-    </div>
+    <div class="tips" data-i-html="tips"></div>
   </div>
 </div>
 
 <!-- 暂停 -->
 <div class="overlay hidden" id="pauseScr">
   <div class="card">
-    <h1>暂停</h1>
+    <h1 data-i="paused"></h1>
     <div class="sub">PAUSED</div>
-    <button class="btn" id="resumeBtn">继续</button>
-    <button class="btn ghost" id="quitBtn">返回标题</button>
+    <button class="btn" id="resumeBtn" data-i="resume"></button>
+    <button class="btn ghost" id="quitBtn" data-i="quit"></button>
   </div>
 </div>
 
@@ -126,21 +146,123 @@
     <div style="font-size:52px;font-weight:900;color:var(--yellow)" id="finalScore">0</div>
     <div id="newBest"></div>
     <div class="stats">
-      <div class="stat"><div class="v" id="sLevel">1</div><div class="l">到达等级</div></div>
-      <div class="stat"><div class="v" id="sKills">0</div><div class="l">消灭怪兽</div></div>
-      <div class="stat"><div class="v" id="sCombo">0</div><div class="l">最高连击</div></div>
-      <div class="stat"><div class="v" id="sAcc">0%</div><div class="l">准确率</div></div>
-      <div class="stat"><div class="v" id="sKpm">0</div><div class="l">每分钟按键</div></div>
-      <div class="stat"><div class="v" id="sTime">0s</div><div class="l">存活时间</div></div>
+      <div class="stat"><div class="v" id="sLevel">1</div><div class="l" data-i="stLevel"></div></div>
+      <div class="stat"><div class="v" id="sKills">0</div><div class="l" data-i="stKills"></div></div>
+      <div class="stat"><div class="v" id="sCombo">0</div><div class="l" data-i="stCombo"></div></div>
+      <div class="stat"><div class="v" id="sAcc">0%</div><div class="l" data-i="stAcc"></div></div>
+      <div class="stat"><div class="v" id="sKpm">0</div><div class="l" data-i="stKpm"></div></div>
+      <div class="stat"><div class="v" id="sTime">0s</div><div class="l" data-i="stTime"></div></div>
     </div>
-    <button class="btn" id="againBtn">再来一局</button>
-    <button class="btn ghost" id="menuBtn">换模式</button>
+    <button class="btn" id="againBtn" data-i="again"></button>
+    <button class="btn ghost" id="menuBtn" data-i="menu"></button>
   </div>
 </div>
 
 <script>
 (() => {
 "use strict";
+const $ = id => document.getElementById(id);
+/* ===================== 界面语言 i18n ===================== */
+const I18N = {
+  "zh-Hans": {
+    title: "打字怪兽", chooseMode: "选择游戏模式",
+    m_ja: "日本語", ms_ja: "日语", m_zh: "中文", ms_zh: "中文", m_en: "English", ms_en: "英文", m_bleach: "BLEACH篇", ms_bleach: "死神 · 日语", m_mix: "混合", ms_mix: "三语随机",
+    inputMethod: "输入方式", inKey: "键盘直打（罗马字 / 拼音）", inIme: "输入法 IME（打出汉字 / 假名）",
+    judge: "判定", judgeLoose: "宽松：汉字 / 假名 / 拼音都算", judgeStrict: "严格：必须打出汉字",
+    sound: "音效", volume: "音量", guide: "显示输入提示", bgmPick: "🎵 自定义 BGM", bgmClear: "✕ 恢复原创",
+    bgmOrig: "原创配乐", start: "开始游戏 ▶", best: "最高分", bestIme: "最高分（输入法）",
+    paused: "暂停", resume: "继续", quit: "返回标题", again: "再来一局", menu: "换模式", newBest: "★ 新纪录！★",
+    modeLbl: "模式", viaIme: "输入法", viaKey: "键盘直打",
+    stLevel: "到达等级", stKills: "消灭怪兽", stCombo: "最高连击", stAcc: "准确率", stKpm: "每分钟输入", stTime: "存活时间",
+    hudScore: "分数", hudLevel: "等级", hudCombo: "连击", hudHp: "生命",
+    imeWarn: "⚠ 键盘直打模式请关闭输入法（切换为半角英文）", imePh: "用输入法打字，上屏即判定", needKanji: "要打汉字！",
+    tips: `<b>玩法：</b>怪兽一只一只出现，在计时条耗尽前打完它的字就能消灭它，下一只马上登场。<br>
+      时间到怪兽会攻击你（扣 1 颗心）。打错会断连击，零失误有 PERFECT 加分。每 8 只升一级，每 5 级出现 BOSS。<br>
+      <b>键盘直打</b>：日语打罗马字（shi/si、tsu/tu、ん=nn 都可以），中文打拼音不带声调，ü 打 <kbd>v</kbd>。请先关闭输入法。<br>
+      <b>输入法模式</b>：用任何输入法（日语 IME、拼音、注音、仓颉、五笔…）打字，上屏后判定。选「严格」则必须打出和题目一样的汉字。<br>
+      <kbd>Esc</kbd> 暂停`
+  },
+  "zh-Hant": {
+    title: "打字怪獸", chooseMode: "選擇遊戲模式",
+    m_ja: "日本語", ms_ja: "日語", m_zh: "中文", ms_zh: "中文", m_en: "English", ms_en: "英文", m_bleach: "BLEACH篇", ms_bleach: "死神 · 日語", m_mix: "混合", ms_mix: "三語隨機",
+    inputMethod: "輸入方式", inKey: "鍵盤直打（羅馬字 / 拼音）", inIme: "輸入法 IME（打出漢字 / 假名）",
+    judge: "判定", judgeLoose: "寬鬆：漢字 / 假名 / 拼音都算", judgeStrict: "嚴格：必須打出漢字",
+    sound: "音效", volume: "音量", guide: "顯示輸入提示", bgmPick: "🎵 自訂 BGM", bgmClear: "✕ 恢復原創",
+    bgmOrig: "原創配樂", start: "開始遊戲 ▶", best: "最高分", bestIme: "最高分（輸入法）",
+    paused: "暫停", resume: "繼續", quit: "返回標題", again: "再來一局", menu: "換模式", newBest: "★ 新紀錄！★",
+    modeLbl: "模式", viaIme: "輸入法", viaKey: "鍵盤直打",
+    stLevel: "到達等級", stKills: "消滅怪獸", stCombo: "最高連擊", stAcc: "準確率", stKpm: "每分鐘輸入", stTime: "存活時間",
+    hudScore: "分數", hudLevel: "等級", hudCombo: "連擊", hudHp: "生命",
+    imeWarn: "⚠ 鍵盤直打模式請關閉輸入法（切換為半形英文）", imePh: "用輸入法打字，上屏即判定", needKanji: "要打漢字！",
+    tips: `<b>玩法：</b>怪獸一隻一隻出現，在計時條耗盡前打完它的字就能消滅它，下一隻馬上登場。<br>
+      時間到怪獸會攻擊你（扣 1 顆心）。打錯會斷連擊，零失誤有 PERFECT 加分。每 8 隻升一級，每 5 級出現 BOSS。<br>
+      <b>鍵盤直打</b>：日語打羅馬字（shi/si、tsu/tu、ん=nn 都可以），中文打拼音不帶聲調，ü 打 <kbd>v</kbd>。請先關閉輸入法。<br>
+      <b>輸入法模式</b>：用任何輸入法（日語 IME、注音、倉頡、速成、拼音…）打字，上屏後判定。選「嚴格」則必須打出和題目一樣的漢字。<br>
+      <kbd>Esc</kbd> 暫停`
+  },
+  ja: {
+    title: "タイピングモンスター", chooseMode: "モードを選択",
+    m_ja: "日本語", ms_ja: "日本語", m_zh: "中国語", ms_zh: "中国語", m_en: "English", ms_en: "英語", m_bleach: "BLEACH編", ms_bleach: "死神 · 日本語", m_mix: "ミックス", ms_mix: "3言語ランダム",
+    inputMethod: "入力方式", inKey: "キーボード直接（ローマ字 / ピンイン）", inIme: "IME（漢字 / かなを入力）",
+    judge: "判定", judgeLoose: "ゆるめ：漢字・かな・ピンインOK", judgeStrict: "きびしめ：漢字で入力",
+    sound: "効果音", volume: "音量", guide: "入力ガイドを表示", bgmPick: "🎵 BGMを選ぶ", bgmClear: "✕ オリジナルに戻す",
+    bgmOrig: "オリジナル曲", start: "スタート ▶", best: "ハイスコア", bestIme: "ハイスコア（IME）",
+    paused: "一時停止", resume: "再開", quit: "タイトルへ", again: "もう一度", menu: "モード変更", newBest: "★ 新記録！★",
+    modeLbl: "モード", viaIme: "IME", viaKey: "キーボード直接",
+    stLevel: "到達レベル", stKills: "撃破数", stCombo: "最大コンボ", stAcc: "正確率", stKpm: "毎分入力数", stTime: "生存時間",
+    hudScore: "スコア", hudLevel: "レベル", hudCombo: "コンボ", hudHp: "HP",
+    imeWarn: "⚠ キーボード直接モードではIMEをオフ（半角英数）にしてください", imePh: "IMEで入力して確定すると判定", needKanji: "漢字で！",
+    tips: `<b>遊び方：</b>モンスターが1体ずつ出現。タイムバーがなくなる前に文字を打ち切れば撃破、すぐ次が登場します。<br>
+      時間切れになると攻撃されてHPが1減ります。ミスするとコンボが途切れ、ノーミスならPERFECTボーナス。8体ごとにレベルアップ、5レベルごとにBOSS。<br>
+      <b>キーボード直接</b>：日本語はローマ字（shi/si、tsu/tu、ん=nn など対応）、中国語はピンイン（声調なし、ü は <kbd>v</kbd>）。IMEはオフにしてください。<br>
+      <b>IMEモード</b>：普段のIMEで入力し、確定した時点で判定。「きびしめ」を選ぶと、お題と同じ漢字で入力する必要があります。<br>
+      <kbd>Esc</kbd> 一時停止`
+  },
+  en: {
+    title: "Typing Monsters", chooseMode: "Choose a mode",
+    m_ja: "日本語", ms_ja: "Japanese", m_zh: "中文", ms_zh: "Chinese", m_en: "English", ms_en: "English", m_bleach: "BLEACH", ms_bleach: "Shinigami · JP", m_mix: "Mixed", ms_mix: "All 3 random",
+    inputMethod: "Input", inKey: "Keyboard (romaji / pinyin)", inIme: "IME (type kanji / kana / hanzi)",
+    judge: "Judging", judgeLoose: "Loose: kanji, kana or pinyin", judgeStrict: "Strict: must type the kanji",
+    sound: "SFX", volume: "Volume", guide: "Show typing hints", bgmPick: "🎵 Custom BGM", bgmClear: "✕ Use original",
+    bgmOrig: "original soundtrack", start: "START ▶", best: "Best", bestIme: "Best (IME)",
+    paused: "Paused", resume: "Resume", quit: "Title screen", again: "Play again", menu: "Change mode", newBest: "★ NEW BEST! ★",
+    modeLbl: "Mode", viaIme: "IME", viaKey: "Keyboard",
+    stLevel: "Level reached", stKills: "Monsters slain", stCombo: "Max combo", stAcc: "Accuracy", stKpm: "Inputs / min", stTime: "Survived",
+    hudScore: "SCORE", hudLevel: "LEVEL", hudCombo: "COMBO", hudHp: "HP",
+    imeWarn: "⚠ Keyboard mode: please turn off your IME", imePh: "Type with your IME — judged on commit", needKanji: "Use kanji!",
+    tips: `<b>How to play:</b> Monsters appear one at a time. Finish typing the word before the timer runs out to defeat it — the next one comes right away.<br>
+      When time runs out, the monster hits you (−1 heart). A typo breaks your combo; no typos earns a PERFECT bonus. Level up every 8 kills, BOSS every 5 levels.<br>
+      <b>Keyboard</b>: Japanese in romaji (shi/si, tsu/tu, ん=nn…), Chinese in pinyin without tones (ü = <kbd>v</kbd>). Turn your IME off.<br>
+      <b>IME mode</b>: type with any IME and it's judged when you commit. "Strict" means you must enter the exact kanji shown.<br>
+      <kbd>Esc</kbd> pause`
+  }
+};
+let LANG = "zh-Hans";
+const T = k => (I18N[LANG] && I18N[LANG][k]) ?? I18N["zh-Hans"][k] ?? k;
+const modeName = m => T("m_" + m);
+function applyLang() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll("[data-i]").forEach(el => { el.textContent = T(el.dataset.i); });
+  document.querySelectorAll("[data-i-html]").forEach(el => { el.innerHTML = T(el.dataset.iHtml); });
+  document.querySelectorAll("[data-i-ph]").forEach(el => { el.placeholder = T(el.dataset.iPh); });
+  $("zhIcon").textContent = "中";
+  document.title = T("title") + " · Typing Monsters";
+  if (typeof showBest === "function") { showBest(); showBgmInfo(); }
+}
+(function initLang() {
+  let l = null;
+  try { l = localStorage.getItem("typingMonstersLang"); } catch (e) {}
+  if (!l) { const n = (navigator.language || "").toLowerCase();
+    l = /^zh-(tw|hk|mo)|hant/.test(n) ? "zh-Hant" : n.startsWith("zh") ? "zh-Hans" : n.startsWith("ja") ? "ja" : n.startsWith("en") ? "en" : "zh-Hans"; }
+  LANG = I18N[l] ? l : "zh-Hans";
+})();
+
+/* 简→繁（中文词库用） */
+const S2T_PAIRS = "风風鱼魚鸟鳥云雲树樹书書国國学學龙龍剑劍爱愛门門车車马馬梦夢谢謝见見师師电電脑腦机機苹蘋乐樂图圖馆館阳陽绿綠兽獸篮籃游遊戏戲键鍵盘盤标標网網络絡长長饺餃锅鍋面麵条條宝寶闪閃顺順对對弹彈万萬设設计計联聯废廢卧臥凤鳳体體发發财財亚亞层層楼樓红紅鲤鯉与與驴驢会會挥揮壮壯伤傷于於补補蓝藍则則穷窮猫貓宫宮强強画畫点點飞飛来來";
+const S2T = {}; for (let i = 0; i < S2T_PAIRS.length; i += 2) S2T[S2T_PAIRS[i]] = S2T_PAIRS[i + 1];
+const toTrad = s => [...s].map(c => S2T[c] || c).join("");
+
+
 
 /* ===================== 词库 ===================== */
 // 日语：[显示, 读音(平假名, ー 表示长音)]
@@ -350,7 +472,6 @@ function resize() {
 addEventListener("resize", resize); resize();
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[(Math.random() * a.length) | 0];
-const $ = id => document.getElementById(id);
 const FONT = '"PingFang SC","Hiragino Sans","Noto Sans JP","Noto Sans SC","Microsoft YaHei","Segoe UI",sans-serif';
 const MONO = '"SF Mono","Consolas","Menlo",monospace';
 
@@ -628,7 +749,6 @@ let G = null, mode = "ja", running = false, paused = false, last = 0;
 const BEST_KEY = "typingMonstersBest";
 function loadBest() { try { return JSON.parse(localStorage.getItem(BEST_KEY)) || {}; } catch (e) { return {}; } }
 function saveBest(b) { try { localStorage.setItem(BEST_KEY, JSON.stringify(b)); } catch (e) {} }
-const MODE_NAME = { ja: "日本語", zh: "中文", en: "English", bleach: "BLEACH篇", mix: "混合" };
 
 function newGame() {
   G = { enemies: [], parts: [], pops: [], beams: [], score: 0, combo: 0, maxCombo: 0, hp: 5, maxHp: 5,
@@ -642,7 +762,7 @@ function makeWord(tier, lang) {
   let item, tries = 0;
   do {
     if (L === "ja" || L === "bleach") { const [d, r] = pick(JD[tier]); item = { lang: "ja", display: d, sub: toHira(d) === r ? "" : r, units: kanaUnits(r), key: d }; }
-    else if (L === "zh") { const [d, p] = pick(ZH[tier]); item = { lang: L, display: d, sub: "", units: letterUnits(p), key: d }; }
+    else if (L === "zh") { const [d, p] = pick(ZH[tier]); item = { lang: L, display: LANG === "zh-Hant" ? toTrad(d) : d, alt: [d, toTrad(d)], sub: "", units: letterUnits(p), key: d }; }
     else { const w = pick(EN[tier]); item = { lang: L, display: w, sub: "", units: letterUnits(w), key: w }; }
   } while ((G.recent.includes(item.key) || G.enemies.some(e => e.word.key === item.key)) && ++tries < 20);
   G.recent.push(item.key); if (G.recent.length > 8) G.recent.shift();
@@ -666,18 +786,19 @@ function spawn(boss = false) {
   if (boss) word = makeWord("boss", mode);
   else { word = G.next || makeWord(tierFor(G.level), mode); G.next = null; }
   const d = diff(G.level);
-  const life = boss ? 5 + word.len * Math.max(0.3, d.perChar * 1.2) : Math.max(2.5, 4 - G.level * 0.12) + word.len * d.perChar;
-  const r0 = boss ? 80 : rand(56, 66);
+  let life = boss ? 5 + word.len * Math.max(0.3, d.perChar * 1.2) : Math.max(2.5, 4 - G.level * 0.12) + word.len * d.perChar;
+  if (imeMode() && word.lang !== "en") life *= 1.3;
+  const r0 = (boss ? 80 : rand(56, 66)) * (imeMode() ? .7 : 1);
   const e = { x: W / 2, y: monY(), r: r0 * .2, r0, word, st: { ui: 0, buf: "", typed: "" }, life, t: 0, boss,
     look: makeLook(boss), locked: true, hitFlash: 0, dead: false, miss: 0 };
-  G.enemies = [e]; G.lock = e;
+  G.enemies = [e]; G.lock = e; if (imeMode()) imeReset();
   G.next = makeWord(tierFor(G.level), mode);           // 预告下一只
   if (boss) { G.bossAlive = true; Music.setBoss(true); G.banner = { text: mode === "bleach" ? "卍解 BANKAI!" : "⚠ BOSS ⚠", t: 1.6, color: "#ff4d6a" }; beep(110, .5, "sawtooth", .08, -60); }
   else beep(300, .06, "triangle", .04, 200);
 }
 
 const playerY = () => H - 70;
-const monY = () => Math.max(170, H * .33);
+const monY = () => imeMode() ? Math.max(130, H * .2) : Math.max(170, H * .33);
 
 function update(dt) {
   G.time += dt;
@@ -699,6 +820,7 @@ function update(dt) {
       if (e.boss) { G.bossAlive = false; Music.setBoss(false); }
       burst(e.x, e.y, "#ff4d6a", 40); beep(80, .3, "sawtooth", .1, -40);
       G.pops.push({ x: e.x, y: e.y - e.r - 20, text: "-1 ♥  TIME UP", color: "#ff4d6a", t: 1.2 });
+      if (imeMode()) imeReset();
       if (G.hp <= 0) return gameOver();
     }
   }
@@ -818,11 +940,21 @@ function drawColored(typed, rest, cx, y, typedColor, restColor) {
 }
 function drawLabel(e) {
   const w = e.word, guide = $("optGuide").checked, maxW = W * .9;
-  const typed = e.st.typed, rest = remaining(w.units, e.st);
+  const ime = imeMode(), ip = e.ime || { which: "", n: 0 };
+  let typed = e.st.typed, rest = remaining(w.units, e.st);
+  if (ime) { typed = ""; rest = ""; }
   let y = monY() + e.r0 * 1.45 + 40;
   ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
   ctx.shadowColor = "rgba(0,0,0,.8)"; ctx.shadowBlur = 8;
-  if (w.lang === "en") {
+  if (ime) {
+    const D = w.display; let dn = 0;
+    if (ip.which === "display") { let c = 0; while (dn < D.length && c < ip.n) { if (normIme(D[dn])) c++; dn++; } }
+    fitFont(D, 800, e.boss ? 50 : 56, w.lang === "en" ? MONO : FONT, maxW);
+    drawColored(D.slice(0, dn), D.slice(dn), W / 2, y, "#3ff2ff", "#fff");
+    if (w.sub && guide) { y += 32; const sn = ip.which === "sub" ? ip.n : 0; fitFont(w.sub, 600, 22, FONT, maxW); drawColored(w.sub.slice(0, sn), w.sub.slice(sn), W / 2, y, "#3ff2ff", "#c7c1f5"); }
+    if (w.lang === "zh" && guide) { y += 30; const p = w.units.map(u => u.opts[0]).join(""), pn = ip.which === "pinyin" ? ip.n : 0; fitFont(p, 600, 18, MONO, maxW); drawColored(p.slice(0, pn), p.slice(pn), W / 2, y, "#3ff2ff", "#8f88c9"); }
+    y += 8;
+  } else if (w.lang === "en") {
     const s = fitFont(typed + rest, 800, e.boss ? 46 : 52, MONO, maxW);
     drawColored(typed, rest, W / 2, y, "#3ff2ff", "#fff"); y += s * .4;
   } else {
@@ -842,6 +974,7 @@ function drawLabel(e) {
   ctx.fillRect(W / 2 - bw / 2, by, bw * p, 10); ctx.shadowBlur = 0;
   ctx.font = `700 13px ${MONO}`; ctx.fillStyle = "#8f88c9";
   ctx.fillText((e.life - e.t).toFixed(1) + "s", W / 2, by + 30);
+  if (ime) imeBox.style.top = Math.min(H - 150, by + 44) + "px";
 }
 function drawNext() {
   if (!G.next) return;
@@ -869,41 +1002,94 @@ function loop(ts) {
 }
 requestAnimationFrame(loop);
 
+/* ===================== 输入法模式（IME） ===================== */
+const imeMode = () => $("optInput").value === "ime";
+const imeBox = $("imeBox");
+let composing = false, imePrev = 0;
+const normIme = s => toHira(s).toLowerCase().replace(/[\s・·　]/g, "");
+const strict = () => $("optJudge").value === "strict";
+function imeCands(w, all) {
+  const c = [{ s: normIme(w.display), which: "display" }];
+  if (w.alt) w.alt.forEach(a => { if (normIme(a) !== c[0].s) c.push({ s: normIme(a), which: "display" }); });   // 简繁都算
+  if (strict() && !all) return c;
+  if (w.lang === "ja" && w.sub) c.push({ s: normIme(w.sub), which: "sub" });
+  if (w.lang === "zh") c.push({ s: w.units.map(u => u.opts[0]).join(""), which: "pinyin" });
+  return c;
+}
+function imeReset() { imeBox.value = ""; imePrev = 0; imeBox.classList.remove("bad"); }
+function imeCheck() {
+  if (!G || !running || paused || composing) return;
+  const e = G.enemies[0]; if (!e) { imeReset(); return; }
+  const v = normIme(imeBox.value);
+  if (!v) { imePrev = 0; e.ime = null; imeBox.classList.remove("bad"); return; }
+  const cands = imeCands(e.word), hit = cands.find(c => c.s.startsWith(v));
+  if (hit) {
+    imeBox.classList.remove("bad");
+    if (v.length > imePrev) { G.keys += v.length - imePrev; G.beams.push({ x: e.x, y: e.y, t: .12 }); e.hitFlash = .06; beep(880 + v.length * 30, .03, "square", .025); }
+    imePrev = v.length; e.ime = { which: hit.which, n: v.length };
+    if (v === hit.s) { kill(e); imeReset(); }
+  } else {
+    G.keys++; G.misses++; G.combo = 0; G.flash = Math.max(G.flash, .12); e.miss++; e.hitFlash = .1;
+    beep(140, .08, "square", .05);
+    if (strict() && imeCands(e.word, true).some(c => c.s.startsWith(v))) G.pops.push({ x: e.x, y: e.y - e.r - 30, text: T("needKanji"), color: "#ffe14d", t: 1 });
+    let k = v.length; while (k > 0 && !cands.some(c => c.s.startsWith(v.slice(0, k)))) k--;
+    imeBox.value = v.slice(0, k); imePrev = k; e.ime = k ? e.ime : null;
+    imeBox.classList.add("bad"); setTimeout(() => imeBox.classList.remove("bad"), 300);
+  }
+}
+imeBox.addEventListener("compositionstart", () => { composing = true; });
+imeBox.addEventListener("compositionend", () => { composing = false; setTimeout(imeCheck, 0); });
+imeBox.addEventListener("input", e => { if (!e.isComposing) imeCheck(); });
+function showImeBox() {
+  const on = running && imeMode();
+  imeBox.style.display = on ? "block" : "none";
+  if (on && !paused) imeBox.focus();
+}
+document.addEventListener("mousedown", e => { if (running && imeMode() && e.target !== imeBox && !e.target.closest(".overlay")) { e.preventDefault(); imeBox.focus(); } });
+
 /* ===================== 流程控制 ===================== */
 function start() {
-  newGame(); running = true; paused = false; BGM.start(mode);
+  newGame(); running = true; paused = false; BGM.start(mode); imeReset(); showImeBox();
   ["startScr", "overScr", "pauseScr"].forEach(id => $(id).classList.add("hidden"));
   $("hud").style.display = "flex"; hud(); beep(440, .1); setTimeout(() => beep(660, .15), 100);
 }
 function gameOver() {
-  running = false; BGM.stop(); $("hud").style.display = "none";
+  running = false; BGM.stop(); showImeBox(); imeBox.blur(); $("hud").style.display = "none";
   const acc = G.keys ? Math.round((G.keys - G.misses) / G.keys * 100) : 0;
   $("finalScore").textContent = G.score.toLocaleString();
-  $("overMode").textContent = "模式：" + MODE_NAME[mode];
+  $("overMode").textContent = T("modeLbl") + "：" + modeName(mode) + " · " + (imeMode() ? T("viaIme") + (strict() ? " · " + T("judgeStrict").split(/[:：]/)[0] : "") : T("viaKey"));
   $("sLevel").textContent = G.level; $("sKills").textContent = G.kills; $("sCombo").textContent = G.maxCombo;
   $("sAcc").textContent = acc + "%"; $("sKpm").textContent = Math.round((G.keys - G.misses) / Math.max(1, G.time) * 60);
   $("sTime").textContent = Math.round(G.time) + "s";
-  const best = loadBest();
-  if (G.score > (best[mode] || 0)) { best[mode] = G.score; saveBest(best); $("newBest").innerHTML = "<div class='newbest'>★ 新纪录！NEW BEST ★</div>"; }
-  else $("newBest").innerHTML = `<div class="best">最高分：${(best[mode] || 0).toLocaleString()}</div>`;
+  const best = loadBest(), bk = mode + bestSfx();
+  if (G.score > (best[bk] || 0)) { best[bk] = G.score; saveBest(best); $("newBest").innerHTML = `<div class='newbest'>${T("newBest")}</div>`; }
+  else $("newBest").innerHTML = `<div class="best">${T("best")}: ${(best[bk] || 0).toLocaleString()}</div>`;
   $("overScr").classList.remove("hidden"); beep(220, .6, "sawtooth", .08, -150);
 }
 function showBest() {
-  const b = loadBest();
-  $("bestLine").textContent = "最高分 · " + ["ja", "zh", "en", "bleach", "mix"].map(m => `${MODE_NAME[m]} ${(b[m] || 0).toLocaleString()}`).join("  |  ");
+  const b = loadBest(), sfx = bestSfx();
+  $("bestLine").textContent = (sfx ? T("bestIme") : T("best")) + " · " + ["ja", "zh", "en", "bleach", "mix"].map(m => `${modeName(m)} ${(b[m + sfx] || 0).toLocaleString()}`).join("  |  ");
+  $("judgeWrap").style.display = imeMode() ? "" : "none";
 }
-function toMenu() { running = false; paused = false; G = null; BGM.stop(); $("hud").style.display = "none";
+function bestSfx() { return imeMode() ? (strict() ? "_ime_s" : "_ime") : "";
+}
+function toMenu() { running = false; paused = false; G = null; BGM.stop(); showImeBox(); $("hud").style.display = "none";
   ["overScr", "pauseScr"].forEach(id => $(id).classList.add("hidden")); $("startScr").classList.remove("hidden"); showBest(); }
 
 document.querySelectorAll(".mode").forEach(b => b.addEventListener("click", () => {
   document.querySelectorAll(".mode").forEach(x => x.classList.remove("sel")); b.classList.add("sel"); mode = b.dataset.mode; showBgmInfo();
 }));
 $("startBtn").onclick = start; $("againBtn").onclick = start; $("menuBtn").onclick = toMenu; $("quitBtn").onclick = toMenu;
-function setPaused(v) { paused = v; $("pauseScr").classList.toggle("hidden", !v); v ? BGM.pause() : BGM.resume(); }
+function setPaused(v) { paused = v; $("pauseScr").classList.toggle("hidden", !v); v ? BGM.pause() : BGM.resume(); if (v) imeBox.blur(); showImeBox(); }
+$("optJudge").onchange = () => { showBest(); try { localStorage.setItem("typingMonstersJudge", $("optJudge").value); } catch (e) {} };
+$("optLang").onchange = () => { LANG = $("optLang").value; try { localStorage.setItem("typingMonstersLang", LANG); } catch (e) {} applyLang(); };
+try { const jv = localStorage.getItem("typingMonstersJudge"); if (jv) $("optJudge").value = jv; } catch (e) {}
+$("optInput").onchange = () => { showBest(); try { localStorage.setItem("typingMonstersInput", $("optInput").value); } catch (e) {} };
+try { const iv = localStorage.getItem("typingMonstersInput"); if (iv) $("optInput").value = iv; } catch (e) {}
 $("resumeBtn").onclick = () => setPaused(false);
 async function showBgmInfo() {
   const rec = await Custom.get(mode);
-  $("bgmInfo").textContent = `${MODE_NAME[mode]} BGM：` + (rec ? `🎵 ${rec.name}` : "原创配乐");
+  $("bgmInfo").textContent = `${modeName(mode)} BGM: ` + (rec ? `🎵 ${rec.name}` : T("bgmOrig"));
   $("bgmClear").style.display = rec ? "" : "none";
 }
 $("bgmPick").onclick = () => $("bgmFile").click();
@@ -911,11 +1097,14 @@ $("bgmFile").onchange = async e => { const f = e.target.files[0]; if (f) { await
 $("bgmClear").onclick = async () => { await Custom.clear(mode); showBgmInfo(); };
 $("optVol").oninput = () => BGM.setVolume();
 $("optBgm").onchange = () => { if (running && !$("optBgm").checked) BGM.stop(); };
-showBgmInfo();
-showBest();
+$("optLang").value = LANG; applyLang();
 
 let imeTimer = 0;
 addEventListener("keydown", e => {
+  if (running && imeMode()) {
+    if (e.key === "Escape" && !e.isComposing) { setPaused(!paused); e.preventDefault(); }
+    return;
+  }
   if (e.isComposing || e.key === "Process" || e.keyCode === 229) {
     $("imeWarn").style.display = "block"; clearTimeout(imeTimer); imeTimer = setTimeout(() => $("imeWarn").style.display = "none", 2500); return;
   }
