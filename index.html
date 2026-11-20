@@ -87,7 +87,15 @@
     </div>
     <div class="row">
       <label><input type="checkbox" id="optSound" checked> 音效</label>
+      <label><input type="checkbox" id="optBgm" checked> BGM</label>
+      <label>音量 <input type="range" id="optVol" min="0" max="100" value="60" style="width:90px;vertical-align:middle"></label>
       <label><input type="checkbox" id="optGuide" checked> 显示输入提示</label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <span id="bgmInfo">本模式 BGM：原创配乐</span>
+      <button class="btn ghost" id="bgmPick" style="padding:5px 14px;font-size:13px;margin:0">🎵 自定义 BGM</button>
+      <button class="btn ghost" id="bgmClear" style="padding:5px 12px;font-size:13px;margin:0;display:none">✕ 恢复原创</button>
+      <input type="file" id="bgmFile" accept="audio/*" style="display:none">
     </div>
     <div style="margin-top:18px"><button class="btn" id="startBtn">开始游戏 ▶</button></div>
     <div class="best" id="bestLine"></div>
@@ -360,6 +368,205 @@ function beep(freq, dur = 0.08, type = "square", vol = 0.06, slide = 0) {
   } catch (e) {}
 }
 
+/* ===================== BGM（WebAudio 实时合成的原创音乐） ===================== */
+function getAC() { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); return actx; }
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+
+const Music = (() => {
+  let ac, master, comp, dist, noiseBuf, timer = null, styleName = null, S = null;
+  let step = 0, nextTime = 0, level = 1, boss = false, motifA, motifB, seed = 1;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+  function init() {
+    ac = getAC();
+    if (master) return;
+    comp = ac.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 4; comp.connect(ac.destination);
+    master = ac.createGain(); master.gain.value = 0; master.connect(comp);
+    noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+    const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    dist = ac.createWaveShaper(); const c = new Float32Array(1024);
+    for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; c[i] = Math.tanh(x * 6); } dist.curve = c;
+    const dl = ac.createBiquadFilter(); dl.type = "lowpass"; dl.frequency.value = 2600; dist.connect(dl); dl.connect(master);
+  }
+  const vol = () => (+$("optVol").value / 100) * .55;
+
+  /* ---------- 乐器 ---------- */
+  function env(g, t, a, peak, dec) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dec); }
+  function tone(type, freq, t, dur, peak, { cutoff = 0, q = 1, bend = 0, dest = master, vib = 0, attack = .005 } = {}) {
+    const o = ac.createOscillator(), g = ac.createGain(); o.type = type;
+    o.frequency.setValueAtTime(freq * Math.pow(2, bend / 12), t);
+    if (bend) o.frequency.exponentialRampToValueAtTime(freq, t + .06);
+    let node = o;
+    if (cutoff) { const f = ac.createBiquadFilter(); f.type = "lowpass"; f.frequency.setValueAtTime(cutoff, t); f.frequency.exponentialRampToValueAtTime(Math.max(200, cutoff * .25), t + dur); f.Q.value = q; o.connect(f); node = f; }
+    if (vib) { const l = ac.createOscillator(), lg = ac.createGain(); l.frequency.value = 5.5; lg.gain.value = freq * vib; l.connect(lg).connect(o.frequency); l.start(t); l.stop(t + dur + .1); }
+    node.connect(g); g.connect(dest); env(g, t, attack, peak, dur); o.start(t); o.stop(t + attack + dur + .05);
+  }
+  function noise(t, dur, peak, type, freq, q = 1) {
+    const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    s.buffer = noiseBuf; f.type = type; f.frequency.value = freq; f.Q.value = q;
+    s.connect(f).connect(g).connect(master); env(g, t, .002, peak, dur); s.start(t); s.stop(t + dur + .05);
+  }
+  function drum(t, f0, f1, dur, peak) {
+    const o = ac.createOscillator(), g = ac.createGain(); o.type = "sine";
+    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur * .8);
+    o.connect(g).connect(master); env(g, t, .003, peak, dur); o.start(t); o.stop(t + dur + .05);
+  }
+  const kick = t => drum(t, 150, 45, .28, .9);
+  const snare = t => { noise(t, .16, .35, "highpass", 1500); drum(t, 220, 160, .1, .3); };
+  const hat = (t, open) => noise(t, open ? .2 : .04, .12, "highpass", 7000);
+  const crash = t => noise(t, 1.2, .18, "highpass", 5000);
+  const taiko = (t, big) => { drum(t, big ? 110 : 160, big ? 50 : 80, big ? .5 : .25, big ? 1 : .6); noise(t, .05, .15, "lowpass", 800); };
+  const kane = t => { tone("sine", 2100, t, .25, .06); tone("sine", 3170, t, .18, .04); };
+  const woodblock = (t, hi) => tone("sine", hi ? 1300 : 950, t, .05, .25);
+  const koto = (m, t, d = .7, v = .22) => { tone("triangle", mtof(m), t, d, v, { bend: .4 }); tone("sine", mtof(m + 12), t, d * .4, v * .25); };
+  const guzheng = (m, t, d = .8, v = .16) => tone("sawtooth", mtof(m), t, d, v, { cutoff: 3200, q: 2, bend: .2 });
+  const erhu = (m, t, d, v = .07) => tone("sawtooth", mtof(m), t, d, v, { cutoff: 1600, vib: .012, attack: .12 });
+  const shamisen = (m, t, v = .2) => tone("square", mtof(m), t, .25, v, { cutoff: 2600, q: 6, bend: .8 });
+  const flute = (m, t, d, v = .1) => tone("sine", mtof(m), t, d, v, { vib: .01, attack: .08 });
+  const sq = (m, t, d, v = .08) => tone("square", mtof(m), t, d, v, { cutoff: 4000 });
+  const sawBass = (m, t, d, v = .22) => tone("sawtooth", mtof(m), t, d, v, { cutoff: 900, q: 4 });
+  const subBass = (m, t, d, v = .3) => tone("triangle", mtof(m), t, d, v);
+  function power(m, t, d, v = .09) { [0, 7, 12].forEach(iv => tone("sawtooth", mtof(m + iv), t, d, v, { dest: dist })); }
+
+  /* ---------- 旋律生成 ---------- */
+  function genMotif(len, density, span) {
+    const out = []; let deg = Math.floor(span / 2);
+    for (let i = 0; i < len; i++) {
+      const p = i % 4 === 0 ? density : i % 2 === 0 ? density * .55 : density * .18;
+      if (rnd() < p) { deg = Math.max(0, Math.min(span - 1, deg + Math.round((rnd() - .5) * 4))); out.push(deg); }
+      else out.push(null);
+    }
+    out[0] = out[0] ?? Math.floor(span / 2);
+    return out;
+  }
+  const degToMidi = (scale, root, deg) => root + scale[deg % scale.length] + 12 * Math.floor(deg / scale.length);
+  function noteLen(motif, i, spb) { let n = 1; while (n < 8 && motif[(i + n) % motif.length] === null) n++; return n * spb; }
+
+  /* ---------- 风格 ---------- */
+  const STYLES = {
+    // 和风：都节音阶 + 琴 + 太鼓 + 钲
+    ja: { bpm: 100, root: 62, scale: [0, 1, 5, 7, 8], bars: [0, 5, 0, -2], density: .5, span: 9,
+      play(i, t, spb, lv, bs) {
+        const b = Math.floor(i / 16) % 4, s = i % 16, r = this.root + this.bars[b];
+        if (s === 0 || s === 8) koto(r - 12, t, 1.2, .2);
+        if (s === 0) koto(r - 5, t + .01, 1, .1);
+        if (s === 0 || s === 10 || (lv >= 3 && s === 6)) taiko(t, s === 0);
+        if (lv >= 2 && s % 8 === 4) kane(t);
+        if (bs && s % 4 === 2) taiko(t, false);
+        const m = melodyAt(i); if (m !== null) koto(degToMidi(this.scale, this.root, m), t, noteLen(curMotif(i), i % 32, spb) + .3, .17);
+        if (lv >= 5 && s === 0 && b % 2 === 0) flute(r + 12 + this.scale[2], t, spb * 14, .07);
+      } },
+    // 中国风：五声音阶 + 古筝 + 二胡 + 木鱼
+    zh: { bpm: 92, root: 60, scale: [0, 2, 4, 7, 9], bars: [0, -3, 5, 7], density: .55, span: 10,
+      play(i, t, spb, lv, bs) {
+        const b = Math.floor(i / 16) % 4, s = i % 16, r = this.root + this.bars[b];
+        if (s === 0) { subBass(r - 24, t, spb * 7, .28); guzheng(r - 12, t, 1.4, .1); }
+        if (s === 8) subBass(r - 17, t, spb * 7, .22);
+        if (s % 4 === 0) woodblock(t, s % 8 === 0);
+        if (lv >= 3 && (s === 0 || s === 11)) drum(t, 180, 110, .2, .45);
+        if (bs && s % 2 === 0) woodblock(t, true);
+        if (s === 0 && b === 0) [0, 1, 2, 3, 4].forEach((d, k) => guzheng(degToMidi(this.scale, this.root, d + 5), t + k * .035, .5, .06)); // 刮奏
+        const m = melodyAt(i); if (m !== null) guzheng(degToMidi(this.scale, this.root, m), t, noteLen(curMotif(i), i % 32, spb) + .4, .22);
+        if (lv >= 4 && s === 0) erhu(r + 12 + (b % 2 ? 4 : 7), t, spb * 15, .06);
+      } },
+    // 英文：Synthwave / Chiptune
+    en: { bpm: 118, root: 57, scale: [0, 3, 5, 7, 10], bars: [0, -4, 3, -2], density: .6, span: 10,
+      play(i, t, spb, lv, bs) {
+        const b = Math.floor(i / 16) % 4, s = i % 16, r = this.root + this.bars[b];
+        const minor = b === 0;                 // Am F C G
+        const chord = minor ? [0, 3, 7, 12] : [0, 4, 7, 12];
+        if (s % 2 === 0) sawBass(r - 24 + (s % 4 === 2 ? 12 : 0), t, spb * 1.6, .18);
+        sq(r + chord[s % 4] + (lv >= 4 && s >= 8 ? 12 : 0), t, spb * .9, .045);
+        if (s % 4 === 0) kick(t);
+        if (lv >= 2 && (s === 4 || s === 12)) snare(t);
+        if (s % 2 === 1 || bs) hat(t, s === 14);
+        if (s === 0 && b === 0) crash(t);
+        if (lv >= 3) { const m = melodyAt(i); if (m !== null) tone("square", mtof(degToMidi(this.scale, this.root + 12, m)), t, noteLen(curMotif(i), i % 32, spb), .06, { cutoff: 5000, vib: .006 }); }
+      } },
+    // BLEACH篇：原创暗黑 J-Rock（失真吉他强力和弦 + 三味线 + 鼓）
+    bleach: { bpm: 140, root: 52, scale: [0, 1, 5, 7, 8], bars: [0, 3, 5, -2], density: .5, span: 9,
+      play(i, t, spb, lv, bs) {
+        const b = Math.floor(i / 16) % 4, s = i % 16, r = this.root + this.bars[b];
+        const accent = [0, 3, 6, 10, 12].includes(s);
+        if (s % 2 === 0 || accent) power(r - 12, t, accent ? spb * 1.8 : spb * .5, accent ? .085 : .05);
+        if (s % 2 === 0) subBass(r - 24, t, spb * .9, .3);
+        if (s === 0 || s === 6 || s === 10 || (lv >= 3 && s === 14) || (bs && s % 4 === 2)) kick(t);
+        if (s === 4 || s === 12) snare(t);
+        hat(t, false);
+        if (s === 0 && b === 0) crash(t);
+        if (lv >= 2) { const m = melodyAt(i); if (m !== null) shamisen(degToMidi(this.scale, this.root + 12, m), t, .17); }
+        if (lv >= 5 && s === 0) tone("sawtooth", mtof(r + 24 + this.scale[2]), t, spb * 14, .045, { dest: dist, vib: .015, attack: .05 });
+      } }
+  };
+  const curMotif = i => (Math.floor(i / 32) % 4 === 2 ? motifB : motifA);   // A A B A
+  const melodyAt = i => curMotif(i)[i % 32];
+
+  function pickStyle(name) {
+    S = STYLES[name]; seed = (Math.random() * 1e9) | 1;
+    motifA = genMotif(32, S.density, S.span); motifB = genMotif(32, S.density * 1.15, S.span);
+  }
+  function tick() {
+    if (!S) return;
+    const bpm = S.bpm * (1 + Math.min(.22, (level - 1) * .02)) * (boss ? 1.08 : 1), spb = 60 / bpm / 4;
+    while (nextTime < ac.currentTime + .15) {
+      try { S.play(step, nextTime, spb, level, boss); } catch (e) {}
+      nextTime += spb; step++;
+      // 每 4 小节在「混合」模式里换风格
+      if (styleName === "mix" && step % 64 === 0) pickStyle(["ja", "zh", "en"][(Math.floor(step / 64)) % 3]);
+    }
+  }
+  return {
+    start(name) {
+      this.stop(); init(); styleName = name; level = 1; boss = false;
+      pickStyle(name === "mix" ? "en" : name);
+      step = 0; nextTime = ac.currentTime + .1;
+      master.gain.cancelScheduledValues(ac.currentTime); master.gain.setValueAtTime(0.0001, ac.currentTime);
+      master.gain.exponentialRampToValueAtTime(Math.max(.0001, vol()), ac.currentTime + .8);
+      timer = setInterval(tick, 25);
+    },
+    stop() {
+      if (timer) clearInterval(timer); timer = null; S = null;
+      if (master) { master.gain.cancelScheduledValues(ac.currentTime); master.gain.setTargetAtTime(0.0001, ac.currentTime, .15); }
+    },
+    pause() { if (timer) clearInterval(timer); timer = null; if (master) master.gain.setTargetAtTime(0.0001, ac.currentTime, .05); },
+    resume() { if (!S || timer) return; nextTime = ac.currentTime + .08; master.gain.setTargetAtTime(Math.max(.0001, vol()), ac.currentTime, .1); timer = setInterval(tick, 25); },
+    setVolume() { if (master && S && timer) master.gain.setTargetAtTime(Math.max(.0001, vol()), ac.currentTime, .05); },
+    setLevel(l) { level = l; }, setBoss(b) { boss = b; }
+  };
+})();
+
+/* ---------- 自定义 BGM（玩家自己的音乐文件，保存在本机浏览器） ---------- */
+const Custom = (() => {
+  const audio = new Audio(); audio.loop = true;
+  let url = null; const cache = {};
+  function db() { return new Promise((res, rej) => { try { const r = indexedDB.open("typingMonstersBgm", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("bgm"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch (e) { rej(e); } }); }
+  async function op(fn) { try { const d = await db(); return await new Promise((res, rej) => { const tx = d.transaction("bgm", "readwrite"); const q = fn(tx.objectStore("bgm")); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); } catch (e) { return undefined; } }
+  return {
+    async get(m) { if (m in cache) return cache[m]; const v = await op(s => s.get(m)); cache[m] = v || null; return cache[m]; },
+    async set(m, file) { cache[m] = { name: file.name, blob: file }; await op(s => s.put({ name: file.name, blob: file }, m)); },
+    async clear(m) { cache[m] = null; await op(s => s.delete(m)); },
+    play(rec) { this.stop(); url = URL.createObjectURL(rec.blob); audio.src = url; audio.volume = +$("optVol").value / 100; audio.currentTime = 0; audio.play().catch(() => {}); },
+    stop() { audio.pause(); if (url) { URL.revokeObjectURL(url); url = null; } },
+    pause() { audio.pause(); }, resume() { if (url) audio.play().catch(() => {}); },
+    setVolume() { audio.volume = +$("optVol").value / 100; }, get active() { return !!url; }
+  };
+})();
+const BGM = {
+  cur: null,
+  async start(m) {
+    this.stop(); if (!$("optBgm").checked) return;
+    getAC(); try { actx.resume(); } catch (e) {}
+    const rec = await Custom.get(m);
+    if (!running) return;
+    if (rec) { this.cur = "custom"; Custom.play(rec); } else { this.cur = "synth"; Music.start(m); }
+  },
+  stop() { Music.stop(); Custom.stop(); this.cur = null; },
+  pause() { Music.pause(); Custom.pause(); },
+  resume() { if (this.cur === "synth") Music.resume(); else if (this.cur === "custom") Custom.resume(); },
+  setVolume() { Music.setVolume(); Custom.setVolume(); }
+};
+
 /* ===================== 怪兽绘制（程序化生成） ===================== */
 const SHAPES = ["blob", "ghost", "eye", "bat", "robot", "spiky", "squid", "slime"];
 function makeLook(boss) {
@@ -465,7 +672,7 @@ function spawn(boss = false) {
     look: makeLook(boss), locked: true, hitFlash: 0, dead: false, miss: 0 };
   G.enemies = [e]; G.lock = e;
   G.next = makeWord(tierFor(G.level), mode);           // 预告下一只
-  if (boss) { G.bossAlive = true; G.banner = { text: mode === "bleach" ? "卍解 BANKAI!" : "⚠ BOSS ⚠", t: 1.6, color: "#ff4d6a" }; beep(110, .5, "sawtooth", .08, -60); }
+  if (boss) { G.bossAlive = true; Music.setBoss(true); G.banner = { text: mode === "bleach" ? "卍解 BANKAI!" : "⚠ BOSS ⚠", t: 1.6, color: "#ff4d6a" }; beep(110, .5, "sawtooth", .08, -60); }
   else beep(300, .06, "triangle", .04, 200);
 }
 
@@ -489,7 +696,7 @@ function update(dt) {
     e.r = e.r0 * (.2 + .8 * Math.min(1, e.t * 5)) * (1 + .4 * p);   // 登场放大 + 随时间逼近变大
     if (e.t >= e.life && !e.dead) {     // 时间到：怪兽攻击
       e.dead = true; G.hp--; G.combo = 0; G.shake = .45; G.flash = .4; G.lock = null; G.gap = .7;
-      if (e.boss) G.bossAlive = false;
+      if (e.boss) { G.bossAlive = false; Music.setBoss(false); }
       burst(e.x, e.y, "#ff4d6a", 40); beep(80, .3, "sawtooth", .1, -40);
       G.pops.push({ x: e.x, y: e.y - e.r - 20, text: "-1 ♥  TIME UP", color: "#ff4d6a", t: 1.2 });
       if (G.hp <= 0) return gameOver();
@@ -522,11 +729,11 @@ function kill(e) {
   burst(e.x, e.y, `hsl(${e.look.hue},90%,65%)`, e.boss ? 80 : 32);
   G.pops.push({ x: e.x, y: e.y - 20, text: `+${pts}` + (mult > 1 ? ` ×${mult}` : ""), color: "#ffe14d", t: 1.1 });
   beep(e.boss ? 330 : 660, e.boss ? .4 : .15, "triangle", .08, e.boss ? 600 : 400);
-  if (e.boss) { G.bossAlive = false; G.shake = .5; G.hp = Math.min(G.maxHp, G.hp + 1);
+  if (e.boss) { G.bossAlive = false; Music.setBoss(false); G.shake = .5; G.hp = Math.min(G.maxHp, G.hp + 1);
     G.pops.push({ x: e.x, y: e.y + 20, text: "+1 ♥", color: "#5dff9b", t: 1.5 }); }
   G.lock = null;
   const newLv = 1 + Math.floor(G.kills / 8);
-  if (newLv > G.level) { G.level = newLv; G.banner = { text: `LEVEL ${newLv}`, t: 1.8, color: "#3ff2ff" }; beep(523, .12, "square", .06); setTimeout(() => beep(784, .2, "square", .06), 110); }
+  if (newLv > G.level) { G.level = newLv; Music.setLevel(newLv); G.banner = { text: `LEVEL ${newLv}`, t: 1.8, color: "#3ff2ff" }; beep(523, .12, "square", .06); setTimeout(() => beep(784, .2, "square", .06), 110); }
 }
 
 function onKey(ch) {
@@ -664,12 +871,12 @@ requestAnimationFrame(loop);
 
 /* ===================== 流程控制 ===================== */
 function start() {
-  newGame(); running = true; paused = false;
+  newGame(); running = true; paused = false; BGM.start(mode);
   ["startScr", "overScr", "pauseScr"].forEach(id => $(id).classList.add("hidden"));
   $("hud").style.display = "flex"; hud(); beep(440, .1); setTimeout(() => beep(660, .15), 100);
 }
 function gameOver() {
-  running = false; $("hud").style.display = "none";
+  running = false; BGM.stop(); $("hud").style.display = "none";
   const acc = G.keys ? Math.round((G.keys - G.misses) / G.keys * 100) : 0;
   $("finalScore").textContent = G.score.toLocaleString();
   $("overMode").textContent = "模式：" + MODE_NAME[mode];
@@ -685,14 +892,26 @@ function showBest() {
   const b = loadBest();
   $("bestLine").textContent = "最高分 · " + ["ja", "zh", "en", "bleach", "mix"].map(m => `${MODE_NAME[m]} ${(b[m] || 0).toLocaleString()}`).join("  |  ");
 }
-function toMenu() { running = false; paused = false; G = null; $("hud").style.display = "none";
+function toMenu() { running = false; paused = false; G = null; BGM.stop(); $("hud").style.display = "none";
   ["overScr", "pauseScr"].forEach(id => $(id).classList.add("hidden")); $("startScr").classList.remove("hidden"); showBest(); }
 
 document.querySelectorAll(".mode").forEach(b => b.addEventListener("click", () => {
-  document.querySelectorAll(".mode").forEach(x => x.classList.remove("sel")); b.classList.add("sel"); mode = b.dataset.mode;
+  document.querySelectorAll(".mode").forEach(x => x.classList.remove("sel")); b.classList.add("sel"); mode = b.dataset.mode; showBgmInfo();
 }));
 $("startBtn").onclick = start; $("againBtn").onclick = start; $("menuBtn").onclick = toMenu; $("quitBtn").onclick = toMenu;
-$("resumeBtn").onclick = () => { paused = false; $("pauseScr").classList.add("hidden"); };
+function setPaused(v) { paused = v; $("pauseScr").classList.toggle("hidden", !v); v ? BGM.pause() : BGM.resume(); }
+$("resumeBtn").onclick = () => setPaused(false);
+async function showBgmInfo() {
+  const rec = await Custom.get(mode);
+  $("bgmInfo").textContent = `${MODE_NAME[mode]} BGM：` + (rec ? `🎵 ${rec.name}` : "原创配乐");
+  $("bgmClear").style.display = rec ? "" : "none";
+}
+$("bgmPick").onclick = () => $("bgmFile").click();
+$("bgmFile").onchange = async e => { const f = e.target.files[0]; if (f) { await Custom.set(mode, f); showBgmInfo(); } e.target.value = ""; };
+$("bgmClear").onclick = async () => { await Custom.clear(mode); showBgmInfo(); };
+$("optVol").oninput = () => BGM.setVolume();
+$("optBgm").onchange = () => { if (running && !$("optBgm").checked) BGM.stop(); };
+showBgmInfo();
 showBest();
 
 let imeTimer = 0;
@@ -702,7 +921,7 @@ addEventListener("keydown", e => {
   }
   if (!running) { if (e.key === "Enter" && !$("startScr").classList.contains("hidden")) start();
     else if (e.key === "Enter" && !$("overScr").classList.contains("hidden")) start(); return; }
-  if (e.key === "Escape") { paused = !paused; $("pauseScr").classList.toggle("hidden", !paused); e.preventDefault(); return; }
+  if (e.key === "Escape") { setPaused(!paused); e.preventDefault(); return; }
   if (paused) return;
   if (e.key === "Backspace") { e.preventDefault(); return; }
   if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -711,7 +930,7 @@ addEventListener("keydown", e => {
     if (/[a-z0-9 '\-,.!?]/.test(ch)) { e.preventDefault(); onKey(ch); }
   }
 });
-addEventListener("blur", () => { if (running && !paused) { paused = true; $("pauseScr").classList.remove("hidden"); } });
+addEventListener("blur", () => { if (running && !paused) setPaused(true); });
 
 // 供测试
 window.__TM = { kanaUnits, step, remaining, get G() { return G; } };
