@@ -92,10 +92,10 @@
     <div style="margin-top:18px"><button class="btn" id="startBtn">开始游戏 ▶</button></div>
     <div class="best" id="bestLine"></div>
     <div class="tips">
-      <b>玩法：</b>怪兽带着文字从上方逼近，在它冲到底线之前打完它的字就能消灭它。<br>
-      敲下第一个字母会自动锁定一只怪兽，打错会断连击。每 8 只升一级，每 5 级出现 BOSS。<br>
+      <b>玩法：</b>怪兽一只一只出现，在计时条耗尽前打完它的字就能消灭它，下一只马上登场。<br>
+      时间到怪兽会攻击你（扣 1 颗心）。打错会断连击，零失误有 PERFECT 加分。每 8 只升一级，每 5 级出现 BOSS。<br>
       <b>日语</b>用罗马字（shi/si、tsu/tu、ん=nn 都可以）；<b>中文</b>用拼音不带声调，ü 打 <kbd>v</kbd>。<br>
-      <kbd>Backspace</kbd> 取消锁定 · <kbd>Esc</kbd> 暂停 · 请先<b>关闭输入法</b>。
+      <kbd>Esc</kbd> 暂停 · 请先<b>关闭输入法</b>。
     </div>
   </div>
 </div>
@@ -425,7 +425,7 @@ const MODE_NAME = { ja: "日本語", zh: "中文", en: "English", bleach: "BLEAC
 
 function newGame() {
   G = { enemies: [], parts: [], pops: [], beams: [], score: 0, combo: 0, maxCombo: 0, hp: 5, maxHp: 5,
-    kills: 0, level: 1, keys: 0, misses: 0, time: 0, spawnT: 0.6, lock: null, shake: 0, bossAlive: false,
+    kills: 0, level: 1, keys: 0, misses: 0, time: 0, gap: 0.8, next: null, lock: null, shake: 0, bossAlive: false,
     bossDoneFor: 0, flash: 0, banner: { text: "LEVEL 1", t: 2 }, recent: [] };
 }
 
@@ -451,47 +451,47 @@ function tierFor(lv) {
   return r < .4 ? "t2" : "t3";
 }
 const diff = lv => ({
-  perChar: Math.max(0.18, 0.78 - lv * 0.045),
-  maxOn: Math.min(7, 1 + Math.ceil(lv / 1.6)),
-  interval: Math.max(0.55, 2.8 - lv * 0.18)
+  perChar: Math.max(0.18, 0.78 - lv * 0.045)
 });
 
 function spawn(boss = false) {
-  const word = makeWord(boss ? "boss" : tierFor(G.level), mode);
+  let word;
+  if (boss) word = makeWord("boss", mode);
+  else { word = G.next || makeWord(tierFor(G.level), mode); G.next = null; }
   const d = diff(G.level);
-  const life = boss ? 4 + word.len * Math.max(0.3, d.perChar * 1.25) : Math.max(2.2, 4 - G.level * 0.15) + word.len * d.perChar;
-  const r = boss ? 58 : rand(28, 38);
-  let x, ok, tries = 0;
-  do { x = rand(90, W - 90); ok = G.enemies.every(e => Math.abs(e.x - x) > 150 || e.y > 220); } while (!ok && ++tries < 15);
-  G.enemies.push({ x, y: -r, y0: -r, r, word, st: { ui: 0, buf: "", typed: "" }, life, t: 0, boss,
-    look: makeLook(boss), locked: false, hitFlash: 0, dead: false });
-  if (boss) { G.bossAlive = true; G.banner = { text: mode === "bleach" ? "卍解 BANKAI!" : "⚠ BOSS ⚠", t: 2.2, color: "#ff4d6a" }; beep(110, .5, "sawtooth", .08, -60); }
+  const life = boss ? 5 + word.len * Math.max(0.3, d.perChar * 1.2) : Math.max(2.5, 4 - G.level * 0.12) + word.len * d.perChar;
+  const r0 = boss ? 80 : rand(56, 66);
+  const e = { x: W / 2, y: monY(), r: r0 * .2, r0, word, st: { ui: 0, buf: "", typed: "" }, life, t: 0, boss,
+    look: makeLook(boss), locked: true, hitFlash: 0, dead: false, miss: 0 };
+  G.enemies = [e]; G.lock = e;
+  G.next = makeWord(tierFor(G.level), mode);           // 预告下一只
+  if (boss) { G.bossAlive = true; G.banner = { text: mode === "bleach" ? "卍解 BANKAI!" : "⚠ BOSS ⚠", t: 1.6, color: "#ff4d6a" }; beep(110, .5, "sawtooth", .08, -60); }
+  else beep(300, .06, "triangle", .04, 200);
 }
 
 const playerY = () => H - 70;
-const dangerY = () => H - 140;
+const monY = () => Math.max(170, H * .33);
 
 function update(dt) {
   G.time += dt;
-  const d = diff(G.level);
-  // 生成
-  const bossDue = G.level % 5 === 0 && G.bossDoneFor !== G.level;
-  if (bossDue && !G.bossAlive) { G.bossDoneFor = G.level; spawn(true); }
-  G.spawnT -= dt;
-  if (G.spawnT <= 0 && G.enemies.filter(e => !e.boss).length < (G.bossAlive ? Math.max(1, d.maxOn - 3) : d.maxOn)) {
-    spawn(); G.spawnT = d.interval * rand(.8, 1.2);
-  } else if (G.enemies.length === 0) G.spawnT = Math.min(G.spawnT, .25);
-
+  // 一次只出一只：当前怪兽消失后，短暂间隔再出下一只
+  if (!G.enemies.length) {
+    G.gap -= dt;
+    if (G.gap <= 0) {
+      const bossDue = G.level % 5 === 0 && G.bossDoneFor !== G.level;
+      if (bossDue) { G.bossDoneFor = G.level; spawn(true); } else spawn();
+    }
+  }
   for (const e of G.enemies) {
     e.t += dt; e.hitFlash = Math.max(0, e.hitFlash - dt);
     const p = Math.min(1, e.t / e.life);
-    e.y = e.y0 + (dangerY() - e.y0) * (p * (.85 + .15 * p));
-    if (e.t >= e.life && !e.dead) {     // 冲到底线：攻击玩家
-      e.dead = true; G.hp--; G.combo = 0; G.shake = .4; G.flash = .35;
-      if (G.lock === e) G.lock = null;
+    e.x = W / 2; e.y = monY();
+    e.r = e.r0 * (.2 + .8 * Math.min(1, e.t * 5)) * (1 + .4 * p);   // 登场放大 + 随时间逼近变大
+    if (e.t >= e.life && !e.dead) {     // 时间到：怪兽攻击
+      e.dead = true; G.hp--; G.combo = 0; G.shake = .45; G.flash = .4; G.lock = null; G.gap = .7;
       if (e.boss) G.bossAlive = false;
-      burst(e.x, e.y, "#ff4d6a", 30); beep(80, .3, "sawtooth", .1, -40);
-      G.pops.push({ x: e.x, y: e.y - 30, text: "-1 ♥", color: "#ff4d6a", t: 1.2 });
+      burst(e.x, e.y, "#ff4d6a", 40); beep(80, .3, "sawtooth", .1, -40);
+      G.pops.push({ x: e.x, y: e.y - e.r - 20, text: "-1 ♥  TIME UP", color: "#ff4d6a", t: 1.2 });
       if (G.hp <= 0) return gameOver();
     }
   }
@@ -515,8 +515,10 @@ function kill(e) {
   e.dead = true; G.kills++; G.combo++; G.maxCombo = Math.max(G.maxCombo, G.combo);
   const mult = Math.min(4, 1 + Math.floor(G.combo / 10) * 0.5);
   const timeBonus = Math.round((1 - e.t / e.life) * 50);
-  const pts = Math.round((e.word.len * 10 * (1 + G.level * 0.2) + timeBonus) * mult * (e.boss ? 3 : 1));
-  G.score += pts;
+  const perfect = e.miss === 0 ? Math.round(e.word.len * 5 * (1 + G.level * 0.2)) : 0;
+  const pts = Math.round((e.word.len * 10 * (1 + G.level * 0.2) + timeBonus + perfect) * mult * (e.boss ? 3 : 1));
+  G.score += pts; G.gap = e.boss ? .9 : .3;
+  if (perfect) G.pops.push({ x: e.x, y: e.y - e.r - 50, text: "PERFECT!", color: "#5dff9b", t: 1 });
   burst(e.x, e.y, `hsl(${e.look.hue},90%,65%)`, e.boss ? 80 : 32);
   G.pops.push({ x: e.x, y: e.y - 20, text: `+${pts}` + (mult > 1 ? ` ×${mult}` : ""), color: "#ffe14d", t: 1.1 });
   beep(e.boss ? 330 : 660, e.boss ? .4 : .15, "triangle", .08, e.boss ? 600 : 400);
@@ -530,16 +532,12 @@ function kill(e) {
 function onKey(ch) {
   if (!G || !running || paused) return;
   G.keys++;
-  let target = G.lock;
-  if (target && !G.enemies.includes(target)) target = G.lock = null;
-  if (!target) {
-    const cands = G.enemies.filter(e => step(e.word.units, e.st, ch));
-    if (cands.length) { cands.sort((a, b) => (a.life - a.t) - (b.life - b.t)); target = cands[0]; G.lock = target; }
-  }
+  const target = G.enemies[0];
+  if (!target) { G.keys--; return; }
   const ns = target && step(target.word.units, target.st, ch);
   if (!ns) {
     G.misses++; G.combo = 0; G.flash = Math.max(G.flash, .12); beep(140, .08, "square", .05);
-    if (target) target.hitFlash = .1;
+    target.hitFlash = .1; target.miss++;
     return;
   }
   target.st = ns; target.hitFlash = .06;
@@ -567,9 +565,6 @@ function render(t) {
 
   if (G && running) {
     // 危险线
-    const dy = dangerY();
-    ctx.strokeStyle = "rgba(255,77,106,.55)"; ctx.setLineDash([12, 10]); ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(0, dy); ctx.lineTo(W, dy); ctx.stroke(); ctx.setLineDash([]);
     // 玩家炮台
     const px = W / 2, py = playerY();
     const aim = G.lock ? Math.atan2(G.lock.y - py, G.lock.x - px) : -Math.PI / 2;
@@ -586,64 +581,69 @@ function render(t) {
     const sorted = [...G.enemies].sort((a, b) => (a === G.lock) - (b === G.lock));
     for (const e of sorted) { e.locked = e === G.lock; drawMonster(e, t); }
     for (const e of sorted) drawLabel(e);
+    drawNext();
     // 粒子
     for (const p of G.parts) { ctx.globalAlpha = Math.min(1, p.t * 2); ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.size, p.size); }
     ctx.globalAlpha = 1;
     for (const p of G.pops) { ctx.globalAlpha = Math.min(1, p.t * 1.5); ctx.fillStyle = p.color; ctx.font = `800 20px ${FONT}`; ctx.textAlign = "center"; ctx.fillText(p.text, p.x, p.y); }
     ctx.globalAlpha = 1;
     // 横幅
-    if (G.banner) { const b = G.banner; ctx.globalAlpha = Math.min(1, b.t * 2); ctx.font = `900 ${Math.min(64, W / 10)}px ${FONT}`; ctx.textAlign = "center";
-      ctx.fillStyle = b.color || "#3ff2ff"; ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 30; ctx.fillText(b.text, W / 2, H * .42); ctx.shadowBlur = 0; ctx.globalAlpha = 1; }
+    if (G.banner) { const b = G.banner; ctx.globalAlpha = Math.min(1, b.t * 2); ctx.font = `900 ${Math.min(48, W / 12)}px ${FONT}`; ctx.textAlign = "center";
+      ctx.fillStyle = b.color || "#3ff2ff"; ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 30; ctx.fillText(b.text, W / 2, Math.max(monY() + 300, H - 150)); ctx.shadowBlur = 0; ctx.globalAlpha = 1; }
     if (G.flash > 0) { ctx.fillStyle = `rgba(255,40,80,${G.flash * .5})`; ctx.fillRect(0, 0, W, H); }
   }
   ctx.restore();
 }
 
+// 按宽度自动缩小字号
+function fitFont(text, weight, size, family, maxW) {
+  ctx.font = `${weight} ${size}px ${family}`;
+  const w = ctx.measureText(text).width;
+  if (w > maxW) { size = Math.max(12, Math.floor(size * maxW / w)); ctx.font = `${weight} ${size}px ${family}`; }
+  return size;
+}
+function drawColored(typed, rest, cx, y, typedColor, restColor) {
+  const fw = ctx.measureText(typed + rest).width; let x0 = cx - fw / 2;
+  ctx.textAlign = "left";
+  ctx.fillStyle = typedColor; ctx.fillText(typed, x0, y); x0 += ctx.measureText(typed).width;
+  ctx.fillStyle = restColor; ctx.fillText(rest, x0, y);
+  ctx.textAlign = "center";
+}
 function drawLabel(e) {
-  const w = e.word, guide = $("optGuide").checked;
-  const y = e.y + e.r + 26 + (e.boss ? 10 : 0);
-  const big = e.boss ? 26 : 22;
-  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
-  // 时间条
-  const p = 1 - e.t / e.life, bw = Math.max(70, e.r * 2.2);
-  ctx.fillStyle = "rgba(0,0,0,.5)"; ctx.fillRect(e.x - bw / 2, e.y - e.r - 18, bw, 6);
-  ctx.fillStyle = p > .5 ? "#5dff9b" : p > .25 ? "#ffe14d" : "#ff4d6a"; ctx.fillRect(e.x - bw / 2, e.y - e.r - 18, bw * p, 6);
-
+  const w = e.word, guide = $("optGuide").checked, maxW = W * .9;
   const typed = e.st.typed, rest = remaining(w.units, e.st);
-  const showRoman = w.lang !== "en";
-  ctx.font = `800 ${big}px ${FONT}`;
-  const dispW = ctx.measureText(w.display).width;
-  ctx.font = `700 15px ${MONO}`;
-  const rw = showRoman && guide ? ctx.measureText(typed + rest).width : 0;
-  ctx.font = `500 13px ${FONT}`;
-  const sw = w.sub ? ctx.measureText(w.sub).width : 0;
-  const boxW = Math.max(dispW, rw, sw) + 24;
-  const boxH = (big + 12) + (w.sub ? 18 : 0) + (showRoman && guide ? 22 : 0);
-  ctx.fillStyle = e.locked ? "rgba(63,242,255,.18)" : "rgba(15,10,40,.82)";
-  ctx.strokeStyle = e.locked ? "#3ff2ff" : "rgba(143,136,201,.5)"; ctx.lineWidth = e.locked ? 2 : 1;
-  ctx.beginPath(); (ctx.roundRect ? ctx.roundRect(e.x - boxW / 2, y - big - 4, boxW, boxH, 10) : ctx.rect(e.x - boxW / 2, y - big - 4, boxW, boxH)); ctx.fill(); ctx.stroke();
-
-  let ly = y + 2;
-  if (w.lang === "en") {        // 英文：直接在单词上着色
-    ctx.font = `800 ${big}px ${MONO}`;
-    const full = typed + rest, fw = ctx.measureText(full).width; let x0 = e.x - fw / 2;
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#3ff2ff"; ctx.fillText(typed, x0, ly); x0 += ctx.measureText(typed).width;
-    ctx.fillStyle = "#fff"; ctx.fillText(rest, x0, ly);
-    ctx.textAlign = "center";
+  let y = monY() + e.r0 * 1.45 + 40;
+  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.shadowColor = "rgba(0,0,0,.8)"; ctx.shadowBlur = 8;
+  if (w.lang === "en") {
+    const s = fitFont(typed + rest, 800, e.boss ? 46 : 52, MONO, maxW);
+    drawColored(typed, rest, W / 2, y, "#3ff2ff", "#fff"); y += s * .4;
   } else {
-    ctx.font = `800 ${big}px ${FONT}`;
-    ctx.fillStyle = typed.length ? "#bff9ff" : "#fff"; ctx.fillText(w.display, e.x, ly);
-    if (w.sub) { ly += 18; ctx.font = `500 13px ${FONT}`; ctx.fillStyle = "#c7c1f5"; ctx.fillText(w.sub, e.x, ly); }
-    if (guide) {
-      ly += 21; ctx.font = `700 15px ${MONO}`;
-      const fw = ctx.measureText(typed + rest).width; let x0 = e.x - fw / 2; ctx.textAlign = "left";
-      ctx.fillStyle = "#3ff2ff"; ctx.fillText(typed, x0, ly); x0 += ctx.measureText(typed).width;
-      ctx.fillStyle = "#8f88c9"; ctx.fillText(rest, x0, ly); ctx.textAlign = "center";
-    } else if (typed) {
-      ly += 21; ctx.font = `700 15px ${MONO}`; ctx.fillStyle = "#3ff2ff"; ctx.fillText(typed, e.x, ly);
-    }
+    const s = fitFont(w.display, 800, e.boss ? 50 : 56, FONT, maxW);
+    ctx.fillStyle = typed.length ? "#e6fdff" : "#fff"; ctx.fillText(w.display, W / 2, y);
+    if (w.sub) { y += 30; fitFont(w.sub, 500, 20, FONT, maxW); ctx.fillStyle = "#c7c1f5"; ctx.fillText(w.sub, W / 2, y); }
+    y += 36; fitFont(typed + rest, 700, 26, MONO, maxW);
+    if (guide) drawColored(typed, rest, W / 2, y, "#3ff2ff", "#8f88c9");
+    else { ctx.fillStyle = "#3ff2ff"; ctx.fillText(typed || " ", W / 2, y); }
   }
+  ctx.shadowBlur = 0;
+  // 计时条
+  const p = Math.max(0, 1 - e.t / e.life), bw = Math.min(520, W * .7), by = y + 24;
+  ctx.fillStyle = "rgba(255,255,255,.08)"; ctx.fillRect(W / 2 - bw / 2, by, bw, 10);
+  ctx.fillStyle = p > .5 ? "#5dff9b" : p > .25 ? "#ffe14d" : "#ff4d6a";
+  ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 12;
+  ctx.fillRect(W / 2 - bw / 2, by, bw * p, 10); ctx.shadowBlur = 0;
+  ctx.font = `700 13px ${MONO}`; ctx.fillStyle = "#8f88c9";
+  ctx.fillText((e.life - e.t).toFixed(1) + "s", W / 2, by + 30);
+}
+function drawNext() {
+  if (!G.next) return;
+  const x = W - 24, y = H - 40;
+  ctx.textAlign = "right";
+  ctx.font = `700 12px ${FONT}`; ctx.fillStyle = "#8f88c9"; ctx.fillText("NEXT ▸", x, y - 26);
+  ctx.font = `800 20px ${G.next.lang === "en" ? MONO : FONT}`; ctx.fillStyle = "rgba(236,235,255,.75)";
+  ctx.fillText(G.next.display, x, y);
+  ctx.textAlign = "center";
 }
 
 function hud() {
@@ -704,7 +704,7 @@ addEventListener("keydown", e => {
     else if (e.key === "Enter" && !$("overScr").classList.contains("hidden")) start(); return; }
   if (e.key === "Escape") { paused = !paused; $("pauseScr").classList.toggle("hidden", !paused); e.preventDefault(); return; }
   if (paused) return;
-  if (e.key === "Backspace") { if (G.lock) G.lock = null; e.preventDefault(); return; }
+  if (e.key === "Backspace") { e.preventDefault(); return; }
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.key.length === 1) {
     const ch = e.key.toLowerCase();
@@ -714,7 +714,7 @@ addEventListener("keydown", e => {
 addEventListener("blur", () => { if (running && !paused) { paused = true; $("pauseScr").classList.remove("hidden"); } });
 
 // 供测试
-window.__TM = { kanaUnits, step, remaining };
+window.__TM = { kanaUnits, step, remaining, get G() { return G; } };
 })();
 </script>
 </body>
