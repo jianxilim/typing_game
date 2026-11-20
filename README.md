@@ -2,6 +2,8 @@
 
 一款霓虹街机风格的网页打字游戏。怪兽带着文字从屏幕上方逼近，在限定时间内打完它的字就能消灭它。支持 **日语、中文、英文**、**BLEACH篇（死神主题，日语）** 以及 **三语混合** 模式。
 Additional mode : typing_game X BLEACH
+
+---
 Play 👉 https://jianxilim.github.io/typing_game/
 ---
 
