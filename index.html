@@ -77,7 +77,7 @@
     <div class="box"><div class="lbl" data-i="hudLevel"></div><div class="val" id="level">1</div></div>
     <div class="box"><div class="lbl" data-i="hudCombo"></div><div class="val" id="combo">0</div></div>
   </div>
-  <div class="box" style="text-align:right"><div class="lbl" data-i="hudHp"></div><div class="val" id="hearts"></div></div>
+  <div class="box" style="text-align:right"><div class="lbl" data-i="hudBest"></div><div class="val" id="hudBest" style="color:var(--dim)">0</div></div>
 </div>
 
 <input id="imeBox" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-i-ph="imePh">
@@ -174,10 +174,10 @@ const I18N = {
     paused: "暂停", resume: "继续", quit: "返回标题", again: "再来一局", menu: "换模式", newBest: "★ 新纪录！★",
     modeLbl: "模式", viaIme: "输入法", viaKey: "键盘直打",
     stLevel: "到达等级", stKills: "消灭怪兽", stCombo: "最高连击", stAcc: "准确率", stKpm: "每分钟输入", stTime: "存活时间",
-    hudScore: "分数", hudLevel: "等级", hudCombo: "连击", hudHp: "生命",
+    hudScore: "分数", hudLevel: "等级", hudCombo: "连击", hudBest: "最高分",
     imeWarn: "⚠ 键盘直打模式请关闭输入法（切换为半角英文）", imePh: "用输入法打字，上屏即判定", needKanji: "要打汉字！",
     tips: `<b>玩法：</b>怪兽一只一只出现，在计时条耗尽前打完它的字就能消灭它，下一只马上登场。<br>
-      时间到怪兽会攻击你（扣 1 颗心）。打错会断连击，零失误有 PERFECT 加分。每 8 只升一级，每 5 级出现 BOSS。<br>
+      <b>只有一条命</b>：计时条用完就游戏结束。打错一次扣 0.5 秒并断连击，零失误有 PERFECT 加分。每 8 只升一级，每 5 级出现 BOSS。<br>
       <b>键盘直打</b>：日语打罗马字（shi/si、tsu/tu、ん=nn 都可以），中文打拼音不带声调，ü 打 <kbd>v</kbd>。请先关闭输入法。<br>
       <b>输入法模式</b>：用任何输入法（日语 IME、拼音、注音、仓颉、五笔…）打字，上屏后判定。选「严格」则必须打出和题目一样的汉字。<br>
       <kbd>Esc</kbd> 暂停`
@@ -192,10 +192,10 @@ const I18N = {
     paused: "暫停", resume: "繼續", quit: "返回標題", again: "再來一局", menu: "換模式", newBest: "★ 新紀錄！★",
     modeLbl: "模式", viaIme: "輸入法", viaKey: "鍵盤直打",
     stLevel: "到達等級", stKills: "消滅怪獸", stCombo: "最高連擊", stAcc: "準確率", stKpm: "每分鐘輸入", stTime: "存活時間",
-    hudScore: "分數", hudLevel: "等級", hudCombo: "連擊", hudHp: "生命",
+    hudScore: "分數", hudLevel: "等級", hudCombo: "連擊", hudBest: "最高分",
     imeWarn: "⚠ 鍵盤直打模式請關閉輸入法（切換為半形英文）", imePh: "用輸入法打字，上屏即判定", needKanji: "要打漢字！",
     tips: `<b>玩法：</b>怪獸一隻一隻出現，在計時條耗盡前打完它的字就能消滅它，下一隻馬上登場。<br>
-      時間到怪獸會攻擊你（扣 1 顆心）。打錯會斷連擊，零失誤有 PERFECT 加分。每 8 隻升一級，每 5 級出現 BOSS。<br>
+      <b>只有一條命</b>：計時條用完就遊戲結束。打錯一次扣 0.5 秒並斷連擊，零失誤有 PERFECT 加分。每 8 隻升一級，每 5 級出現 BOSS。<br>
       <b>鍵盤直打</b>：日語打羅馬字（shi/si、tsu/tu、ん=nn 都可以），中文打拼音不帶聲調，ü 打 <kbd>v</kbd>。請先關閉輸入法。<br>
       <b>輸入法模式</b>：用任何輸入法（日語 IME、注音、倉頡、速成、拼音…）打字，上屏後判定。選「嚴格」則必須打出和題目一樣的漢字。<br>
       <kbd>Esc</kbd> 暫停`
@@ -210,10 +210,10 @@ const I18N = {
     paused: "一時停止", resume: "再開", quit: "タイトルへ", again: "もう一度", menu: "モード変更", newBest: "★ 新記録！★",
     modeLbl: "モード", viaIme: "IME", viaKey: "キーボード直接",
     stLevel: "到達レベル", stKills: "撃破数", stCombo: "最大コンボ", stAcc: "正確率", stKpm: "毎分入力数", stTime: "生存時間",
-    hudScore: "スコア", hudLevel: "レベル", hudCombo: "コンボ", hudHp: "HP",
+    hudScore: "スコア", hudLevel: "レベル", hudCombo: "コンボ", hudBest: "ハイスコア",
     imeWarn: "⚠ キーボード直接モードではIMEをオフ（半角英数）にしてください", imePh: "IMEで入力して確定すると判定", needKanji: "漢字で！",
     tips: `<b>遊び方：</b>モンスターが1体ずつ出現。タイムバーがなくなる前に文字を打ち切れば撃破、すぐ次が登場します。<br>
-      時間切れになると攻撃されてHPが1減ります。ミスするとコンボが途切れ、ノーミスならPERFECTボーナス。8体ごとにレベルアップ、5レベルごとにBOSS。<br>
+      <b>ライフは1つだけ</b>：タイムバーがなくなったらゲームオーバー。ミスすると0.5秒減ってコンボが途切れます。ノーミスならPERFECTボーナス。8体ごとにレベルアップ、5レベルごとにBOSS。<br>
       <b>キーボード直接</b>：日本語はローマ字（shi/si、tsu/tu、ん=nn など対応）、中国語はピンイン（声調なし、ü は <kbd>v</kbd>）。IMEはオフにしてください。<br>
       <b>IMEモード</b>：普段のIMEで入力し、確定した時点で判定。「きびしめ」を選ぶと、お題と同じ漢字で入力する必要があります。<br>
       <kbd>Esc</kbd> 一時停止`
@@ -228,10 +228,10 @@ const I18N = {
     paused: "Paused", resume: "Resume", quit: "Title screen", again: "Play again", menu: "Change mode", newBest: "★ NEW BEST! ★",
     modeLbl: "Mode", viaIme: "IME", viaKey: "Keyboard",
     stLevel: "Level reached", stKills: "Monsters slain", stCombo: "Max combo", stAcc: "Accuracy", stKpm: "Inputs / min", stTime: "Survived",
-    hudScore: "SCORE", hudLevel: "LEVEL", hudCombo: "COMBO", hudHp: "HP",
+    hudScore: "SCORE", hudLevel: "LEVEL", hudCombo: "COMBO", hudBest: "BEST",
     imeWarn: "⚠ Keyboard mode: please turn off your IME", imePh: "Type with your IME — judged on commit", needKanji: "Use kanji!",
     tips: `<b>How to play:</b> Monsters appear one at a time. Finish typing the word before the timer runs out to defeat it — the next one comes right away.<br>
-      When time runs out, the monster hits you (−1 heart). A typo breaks your combo; no typos earns a PERFECT bonus. Level up every 8 kills, BOSS every 5 levels.<br>
+      <b>One life only</b>: if the timer runs out, it's game over. Each typo costs 0.5 seconds and breaks your combo; no typos earns a PERFECT bonus. Level up every 8 kills, BOSS every 5 levels.<br>
       <b>Keyboard</b>: Japanese in romaji (shi/si, tsu/tu, ん=nn…), Chinese in pinyin without tones (ü = <kbd>v</kbd>). Turn your IME off.<br>
       <b>IME mode</b>: type with any IME and it's judged when you commit. "Strict" means you must enter the exact kanji shown.<br>
       <kbd>Esc</kbd> pause`
@@ -693,7 +693,7 @@ function loadBest() { try { return JSON.parse(localStorage.getItem(BEST_KEY)) ||
 function saveBest(b) { try { localStorage.setItem(BEST_KEY, JSON.stringify(b)); } catch (e) {} }
 
 function newGame() {
-  G = { enemies: [], parts: [], pops: [], beams: [], score: 0, combo: 0, maxCombo: 0, hp: 5, maxHp: 5,
+  G = { enemies: [], parts: [], pops: [], beams: [], score: 0, combo: 0, maxCombo: 0, dying: 0,
     kills: 0, level: 1, keys: 0, misses: 0, time: 0, gap: 0.8, next: null, lock: null, shake: 0, bossAlive: false,
     bossDoneFor: 0, flash: 0, banner: { text: "LEVEL 1", t: 2 }, recent: [] };
 }
@@ -720,7 +720,7 @@ function tierFor(lv) {
   return r < .4 ? "t2" : "t3";
 }
 const diff = lv => ({
-  perChar: Math.max(0.18, 0.78 - lv * 0.045)
+  perChar: Math.max(0.17, 0.72 - lv * 0.045)
 });
 
 function spawn(boss = false) {
@@ -728,7 +728,7 @@ function spawn(boss = false) {
   if (boss) word = makeWord("boss", mode);
   else { word = G.next || makeWord(tierFor(G.level), mode); G.next = null; }
   const d = diff(G.level);
-  let life = boss ? 5 + word.len * Math.max(0.3, d.perChar * 1.2) : Math.max(2.5, 4 - G.level * 0.12) + word.len * d.perChar;
+  let life = boss ? 4.5 + word.len * Math.max(0.28, d.perChar * 1.15) : Math.max(2.3, 3.6 - G.level * 0.12) + word.len * d.perChar;
   if (imeMode() && word.lang !== "en") life *= 1.3;
   const r0 = (boss ? 80 : rand(56, 66)) * (imeMode() ? .7 : 1);
   const e = { x: W / 2, y: monY(), r: r0 * .2, r0, word, st: { ui: 0, buf: "", typed: "" }, life, t: 0, boss,
@@ -745,7 +745,7 @@ const monY = () => imeMode() ? Math.max(130, H * .2) : Math.max(170, H * .33);
 function update(dt) {
   G.time += dt;
   // 一次只出一只：当前怪兽消失后，短暂间隔再出下一只
-  if (!G.enemies.length) {
+  if (!G.enemies.length && !G.dying) {
     G.gap -= dt;
     if (G.gap <= 0) {
       const bossDue = G.level % 5 === 0 && G.bossDoneFor !== G.level;
@@ -754,19 +754,20 @@ function update(dt) {
   }
   for (const e of G.enemies) {
     e.t += dt; e.hitFlash = Math.max(0, e.hitFlash - dt);
+    if (e.wrong && (e.wrong.t -= dt) <= 0) e.wrong = null;
     const p = Math.min(1, e.t / e.life);
     e.x = W / 2; e.y = monY();
     e.r = e.r0 * (.2 + .8 * Math.min(1, e.t * 5)) * (1 + .4 * p);   // 登场放大 + 随时间逼近变大
     if (e.t >= e.life && !e.dead) {     // 时间到：怪兽攻击
-      e.dead = true; G.hp--; G.combo = 0; G.shake = .45; G.flash = .4; G.lock = null; G.gap = .7;
-      if (e.boss) { G.bossAlive = false; Music.setBoss(false); }
-      burst(e.x, e.y, "#ff4d6a", 40); beep(80, .3, "sawtooth", .1, -40);
-      G.pops.push({ x: e.x, y: e.y - e.r - 20, text: "-1 ♥  TIME UP", color: "#ff4d6a", t: 1.2 });
-      if (imeMode()) imeReset();
-      if (G.hp <= 0) return gameOver();
+      e.dead = true; G.dying = 1.4; G.shake = .7; G.flash = .7; G.lock = null;
+      burst(e.x, e.y, "#ff4d6a", 70); beep(80, .5, "sawtooth", .12, -40);
+      G.banner = { text: "TIME UP", t: 1.4, color: "#ff4d6a" };
+      BGM.pause();
+      if (imeMode()) { imeReset(); imeBox.blur(); }
     }
   }
   G.enemies = G.enemies.filter(e => !e.dead);
+  if (G.dying) { G.dying -= dt; if (G.dying <= 0) { G.dying = 0; for (const p of G.parts) p.t = 0; return gameOver(); } }
   for (const p of G.parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; p.t -= dt; }
   G.parts = G.parts.filter(p => p.t > 0);
   for (const p of G.pops) { p.y -= 40 * dt; p.t -= dt; }
@@ -793,15 +794,21 @@ function kill(e) {
   burst(e.x, e.y, `hsl(${e.look.hue},90%,65%)`, e.boss ? 80 : 32);
   G.pops.push({ x: e.x, y: e.y - 20, text: `+${pts}` + (mult > 1 ? ` ×${mult}` : ""), color: "#ffe14d", t: 1.1 });
   beep(e.boss ? 330 : 660, e.boss ? .4 : .15, "triangle", .08, e.boss ? 600 : 400);
-  if (e.boss) { G.bossAlive = false; Music.setBoss(false); G.shake = .5; G.hp = Math.min(G.maxHp, G.hp + 1);
-    G.pops.push({ x: e.x, y: e.y + 20, text: "+1 ♥", color: "#5dff9b", t: 1.5 }); }
+  if (e.boss) { G.bossAlive = false; Music.setBoss(false); G.shake = .5;
+    G.pops.push({ x: e.x, y: e.y + 20, text: "BOSS DEFEATED!", color: "#5dff9b", t: 1.5 }); }
   G.lock = null;
   const newLv = 1 + Math.floor(G.kills / 8);
   if (newLv > G.level) { G.level = newLv; Music.setLevel(newLv); G.banner = { text: `LEVEL ${newLv}`, t: 1.8, color: "#3ff2ff" }; beep(523, .12, "square", .06); setTimeout(() => beep(784, .2, "square", .06), 110); }
 }
 
+// 打错一次扣 0.5 秒
+const PENALTY = 0.5;
+function timePenalty(e) {
+  e.t = Math.min(e.life, e.t + PENALTY);
+  G.pops.push({ x: W / 2 + Math.min(260, W * .35) + 30, y: (e.barY || e.y) + 10, text: "-" + PENALTY + "s", color: "#ff4d6a", t: .8 });
+}
 function onKey(ch) {
-  if (!G || !running || paused) return;
+  if (!G || !running || paused || G.dying) return;
   G.keys++;
   const target = G.enemies[0];
   if (!target) { G.keys--; return; }
@@ -809,6 +816,8 @@ function onKey(ch) {
   if (!ns) {
     G.misses++; G.combo = 0; G.flash = Math.max(G.flash, .12); beep(140, .08, "square", .05);
     target.hitFlash = .1; target.miss++;
+    target.wrong = { ch: ch === " " ? "␣" : ch, t: .45 };
+    timePenalty(target);
     return;
   }
   target.st = ns; target.hitFlash = .06;
@@ -860,7 +869,8 @@ function render(t) {
     ctx.globalAlpha = 1;
     // 横幅
     if (G.banner) { const b = G.banner; ctx.globalAlpha = Math.min(1, b.t * 2); ctx.font = `900 ${Math.min(48, W / 12)}px ${FONT}`; ctx.textAlign = "center";
-      ctx.fillStyle = b.color || "#3ff2ff"; ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 30; ctx.fillText(b.text, W / 2, Math.max(monY() + 300, H - 150)); ctx.shadowBlur = 0; ctx.globalAlpha = 1; }
+      ctx.fillStyle = b.color || "#3ff2ff"; ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 30; if (G.dying) ctx.font = `900 ${Math.min(96, W / 7)}px ${FONT}`;
+      ctx.fillText(b.text, W / 2, G.dying ? H * .45 : Math.max(monY() + 300, H - 150)); ctx.shadowBlur = 0; ctx.globalAlpha = 1; }
     if (G.flash > 0) { ctx.fillStyle = `rgba(255,40,80,${G.flash * .5})`; ctx.fillRect(0, 0, W, H); }
   }
   ctx.restore();
@@ -873,10 +883,20 @@ function fitFont(text, weight, size, family, maxW) {
   if (w > maxW) { size = Math.max(12, Math.floor(size * maxW / w)); ctx.font = `${weight} ${size}px ${family}`; }
   return size;
 }
-function drawColored(typed, rest, cx, y, typedColor, restColor) {
+function drawColored(typed, rest, cx, y, typedColor, restColor, wrong, below) {
   const fw = ctx.measureText(typed + rest).width; let x0 = cx - fw / 2;
   ctx.textAlign = "left";
   ctx.fillStyle = typedColor; ctx.fillText(typed, x0, y); x0 += ctx.measureText(typed).width;
+  if (wrong) {   // 打错的键：在下一个字的位置短暂显示红色
+    const cw = ctx.measureText(rest[0] || "m").width, m = ctx.measureText("M");
+    const h = (m.actualBoundingBoxAscent || 14) + 6;
+    ctx.globalAlpha = Math.min(1, wrong.t * 3);
+    ctx.fillStyle = "rgba(255,77,106,.35)"; ctx.fillRect(x0 - 2, y - h + 2, cw + 4, h + 4);
+    ctx.fillStyle = "#ff4d6a";
+    if (below) { const f = ctx.font; ctx.font = f.replace(/\d+px/, m2 => Math.round(parseInt(m2) * .7) + "px"); ctx.fillText(wrong.ch, x0 + cw * .15, y + h * .85); ctx.font = f; }
+    else ctx.fillText(wrong.ch, x0, y - h - 2);
+    ctx.globalAlpha = 1;
+  }
   ctx.fillStyle = restColor; ctx.fillText(rest, x0, y);
   ctx.textAlign = "center";
 }
@@ -898,18 +918,18 @@ function drawLabel(e) {
     y += 8;
   } else if (w.lang === "en") {
     const s = fitFont(typed + rest, 800, e.boss ? 46 : 52, MONO, maxW);
-    drawColored(typed, rest, W / 2, y, "#3ff2ff", "#fff"); y += s * .4;
+    drawColored(typed, rest, W / 2, y, "#3ff2ff", "#fff", e.wrong); y += s * .4;
   } else {
     const s = fitFont(w.display, 800, e.boss ? 50 : 56, FONT, maxW);
     ctx.fillStyle = typed.length ? "#e6fdff" : "#fff"; ctx.fillText(w.display, W / 2, y);
     if (w.sub) { y += 30; fitFont(w.sub, 500, 20, FONT, maxW); ctx.fillStyle = "#c7c1f5"; ctx.fillText(w.sub, W / 2, y); }
     y += 36; fitFont(typed + rest, 700, 26, MONO, maxW);
-    if (guide) drawColored(typed, rest, W / 2, y, "#3ff2ff", "#8f88c9");
+    if (guide) drawColored(typed, rest, W / 2, y, "#3ff2ff", "#8f88c9", e.wrong, true);
     else { ctx.fillStyle = "#3ff2ff"; ctx.fillText(typed || " ", W / 2, y); }
   }
   ctx.shadowBlur = 0;
   // 计时条
-  const p = Math.max(0, 1 - e.t / e.life), bw = Math.min(520, W * .7), by = y + 24;
+  const p = Math.max(0, 1 - e.t / e.life), bw = Math.min(520, W * .7), by = y + 24; e.barY = by;
   ctx.fillStyle = "rgba(255,255,255,.08)"; ctx.fillRect(W / 2 - bw / 2, by, bw, 10);
   ctx.fillStyle = p > .5 ? "#5dff9b" : p > .25 ? "#ffe14d" : "#ff4d6a";
   ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 12;
@@ -933,7 +953,8 @@ function hud() {
   $("level").textContent = G.level;
   const mult = Math.min(4, 1 + Math.floor(G.combo / 10) * 0.5);
   $("combo").textContent = G.combo + (mult > 1 ? ` ×${mult}` : "");
-  $("hearts").innerHTML = "<span style='color:#ff4d6a'>" + "♥".repeat(Math.max(0, G.hp)) + "</span><span style='color:#3a2d7a'>" + "♥".repeat(Math.max(0, G.maxHp - G.hp)) + "</span>";
+  if (G.best === undefined) G.best = loadBest()[mode + bestSfx()] || 0;
+  const hb = $("hudBest"); hb.textContent = Math.max(G.best, G.score).toLocaleString(); hb.style.color = G.score > G.best ? "var(--green)" : "var(--dim)";
 }
 
 function loop(ts) {
@@ -960,7 +981,7 @@ function imeCands(w, all) {
 }
 function imeReset() { imeBox.value = ""; imePrev = 0; imeBox.classList.remove("bad"); }
 function imeCheck() {
-  if (!G || !running || paused || composing) return;
+  if (!G || !running || paused || composing || G.dying) return;
   const e = G.enemies[0]; if (!e) { imeReset(); return; }
   const v = normIme(imeBox.value);
   if (!v) { imePrev = 0; e.ime = null; imeBox.classList.remove("bad"); return; }
@@ -972,10 +993,14 @@ function imeCheck() {
     if (v === hit.s) { kill(e); imeReset(); }
   } else {
     G.keys++; G.misses++; G.combo = 0; G.flash = Math.max(G.flash, .12); e.miss++; e.hitFlash = .1;
+    timePenalty(e);
     beep(140, .08, "square", .05);
     if (strict() && imeCands(e.word, true).some(c => c.s.startsWith(v))) G.pops.push({ x: e.x, y: e.y - e.r - 30, text: T("needKanji"), color: "#ffe14d", t: 1 });
     let k = v.length; while (k > 0 && !cands.some(c => c.s.startsWith(v.slice(0, k)))) k--;
-    imeBox.value = v.slice(0, k); imePrev = k; e.ime = k ? e.ime : null;
+    // 保留玩家原本打的字（片假名、空格等），只删掉错的部分
+    const raw = imeBox.value; let i = 0, c = 0;
+    while (i < raw.length && c < k) { if (normIme(raw[i])) c++; i++; }
+    imeBox.value = raw.slice(0, i); imePrev = k; e.ime = k ? e.ime : null;
     imeBox.classList.add("bad"); setTimeout(() => imeBox.classList.remove("bad"), 300);
   }
 }
@@ -1022,7 +1047,7 @@ document.querySelectorAll(".mode").forEach(b => b.addEventListener("click", () =
   document.querySelectorAll(".mode").forEach(x => x.classList.remove("sel")); b.classList.add("sel"); mode = b.dataset.mode; showBgmInfo();
 }));
 $("startBtn").onclick = start; $("againBtn").onclick = start; $("menuBtn").onclick = toMenu; $("quitBtn").onclick = toMenu;
-function setPaused(v) { paused = v; $("pauseScr").classList.toggle("hidden", !v); v ? BGM.pause() : BGM.resume(); if (v) imeBox.blur(); showImeBox(); }
+function setPaused(v) { if (G && G.dying) return; paused = v; $("pauseScr").classList.toggle("hidden", !v); v ? BGM.pause() : BGM.resume(); if (v) imeBox.blur(); showImeBox(); }
 $("optJudge").onchange = () => { showBest(); try { localStorage.setItem("typingMonstersJudge", $("optJudge").value); } catch (e) {} };
 $("optLang").onchange = () => { LANG = $("optLang").value; try { localStorage.setItem("typingMonstersLang", LANG); } catch (e) {} applyLang(); };
 try { const jv = localStorage.getItem("typingMonstersJudge"); if (jv) $("optJudge").value = jv; } catch (e) {}
@@ -1056,12 +1081,13 @@ addEventListener("keydown", e => {
   if (paused) return;
   if (e.key === "Backspace") { e.preventDefault(); return; }
   if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.repeat) { e.preventDefault(); return; }          // 按住不放的自动连发不计入
   if (e.key.length === 1) {
     const ch = e.key.toLowerCase();
     if (/[a-z0-9 '\-,.!?]/.test(ch)) { e.preventDefault(); onKey(ch); }
   }
 });
-addEventListener("blur", () => { if (running && !paused) setPaused(true); });
+addEventListener("blur", () => { if (running && !paused && !G.dying) setPaused(true); });
 
 // 供测试
 window.__TM = { kanaUnits, step, remaining, get G() { return G; } };
